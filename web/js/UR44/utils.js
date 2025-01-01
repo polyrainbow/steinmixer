@@ -291,6 +291,10 @@ export const parseSysExMessage = (message) => {
   } else if (message.length === 3520) { console.log(message);
     return {
       "type": "init",
+      input1Linked: message[937], // and 938
+      input3Linked: message[939], // and 940
+      // 941 empty
+      input5Linked: message[942], // and 943
       input1InvertPhaseEnabled: message[951],
       input2InvertPhaseEnabled: message[952],
       input3InvertPhaseEnabled: message[953],

@@ -33,8 +33,8 @@ export const UR44Params = new Map([
   ["Phones2Output", [34, 0, 1, 0, "0:Mix 1; 1:Mix 2"]],
   ["HPFSetting", [4, 0, 4, 2, "0:40Hz; 1:60Hz; 2:80Hz; 3:100Hz; 4:120Hz"]],
   [
-    "InputStereo",
-    [0, 0, 1, 0, "0:off; 1:input1+input2-stereo", true, "ch0, ch2, ch4 only"],
+    "InputLink",
+    [0, 0, 1, 0, "0:off; 1:input1+input2 linked", true, "ch0, ch2, ch4 only"],
   ],
   ["InputInvertPhase", [2, 0, 1, 0, "0:normal; 1:inverted", true]],
 ]);

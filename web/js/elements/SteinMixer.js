@@ -45,6 +45,17 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       this.status = "ready";
       this.render();
 
+      Array.from(document.querySelectorAll("stereo-input"))
+        .forEach(si => {
+          si.addEventListener("link-channels", (e) => {
+            const paramKey = "input" + e.detail.channelIdL.substring(6) + "Linked";
+            console.log(paramKey);
+            const newValue = e.detail.linked;
+            this.params[paramKey] = newValue;
+            updateParamValue("InputLink", newValue, e.detail.channelIdL);
+          });
+        });
+  
       Array.from(document.querySelectorAll("volume-slider"))
         .forEach(vs => {
           vs.addEventListener("volume", (e) => {
@@ -241,7 +252,12 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       return;
     } else if (this.status === "no-interface") {
       const template
-        = "Could not find audio interface. Make sure it is connected.";
+        = html`<h1>Steinmixer</h1>
+        <p>Could not find audio interface. Make sure it is connected.
+        <br>
+        <button @click=${() => location.reload()}>
+          Reload page to check again
+        </button>`;
       render(template, this);
       return;
     } else if (this.status === "loading") {
@@ -272,6 +288,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         >Mix 2</button>
       </div>
       <stereo-input
+        link-inputs=${this.params.input1Linked}
         title-l="Analog 1"
         title-r="Analog 2"
         channel-id-l="analog1"
@@ -326,6 +343,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         invert-phase-r-enabled=${this.params.input2InvertPhaseEnabled}
       ></stereo-input>
       <stereo-input
+        link-inputs=${this.params.input3Linked}
         title-l="Analog 3"
         title-r="Analog 4"
         channel-id-l="analog3"
@@ -380,6 +398,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         invert-phase-r-enabled=${this.params.input4InvertPhaseEnabled}
       ></stereo-input>
       <stereo-input
+        link-inputs=${this.params.input5Linked}
         title-l="Analog 5"
         title-r="Analog 6"
         channel-id-l="analog5"
