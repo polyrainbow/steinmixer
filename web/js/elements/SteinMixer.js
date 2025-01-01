@@ -5,7 +5,10 @@ import {
 } from "../UR44/index.js";
 import "./StereoInput.js";
 import { html, render, live } from "../lit.js";
-import { getChannelIndexFromChannelId, INPUT_CHANNEL_IDS } from "../UR44/utils.js";
+import {
+  getChannelIndexFromChannelId,
+  INPUT_CHANNEL_IDS,
+} from "../UR44/utils.js";
 
 const DEBUG_MODE = false;
 
@@ -309,18 +312,18 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         <button
           class=${this.activeMix === 0 ? "active" : ""}
           @click=${() => {
-      selectActiveMix(0);
-      this.activeMix = 0;
-      this.render();
-    }}
+            selectActiveMix(0);
+            this.activeMix = 0;
+            this.render();
+          }}
         >Mix 1</button>
         <button
           class=${this.activeMix === 1 ? "active" : ""}
           @click=${() => {
-      selectActiveMix(1);
-      this.activeMix = 1;
-      this.render();
-    }}
+            selectActiveMix(1);
+            this.activeMix = 1;
+            this.render();
+          }}
         >Mix 2</button>
       </div>
       <stereo-input
@@ -539,9 +542,9 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         </label>
         <select id="phones-2-output-select"
           @change=${(e) => {
-          this.params.phones2Output = parseInt(e.target.value);
-          updateParamValue("Phones2Output", parseInt(e.target.value), 0);
-        }}
+            this.params.phones2Output = parseInt(e.target.value);
+            updateParamValue("Phones2Output", parseInt(e.target.value), 0);
+          }}
           .value=${live(this.params.phones2Output)}
         >
           <option value="0">Mix 1</option>
@@ -554,8 +557,8 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         </label>
         <select id="input-56-level-select"
           @change=${(e) => {
-          updateParamValue("Input56Level", parseInt(e.target.value), 0);
-        }}
+            updateParamValue("Input56Level", parseInt(e.target.value), 0);
+          }}
           .value=${live(this.params.input45Level)}
         >
           <option value="1">-10dBV</option>
@@ -569,13 +572,13 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         <select
           id="hpf-level-select"
           @change=${(e) => {
-          updateParamValue("HPFSetting", parseInt(e.target.value), 0);
-          updateParamValue("HPFSetting", parseInt(e.target.value), 1);
-          updateParamValue("HPFSetting", parseInt(e.target.value), 2);
-          updateParamValue("HPFSetting", parseInt(e.target.value), 3);
-          updateParamValue("HPFSetting", parseInt(e.target.value), 4);
-          updateParamValue("HPFSetting", parseInt(e.target.value), 5);
-        }}
+            updateParamValue("HPFSetting", parseInt(e.target.value), 0);
+            updateParamValue("HPFSetting", parseInt(e.target.value), 1);
+            updateParamValue("HPFSetting", parseInt(e.target.value), 2);
+            updateParamValue("HPFSetting", parseInt(e.target.value), 3);
+            updateParamValue("HPFSetting", parseInt(e.target.value), 4);
+            updateParamValue("HPFSetting", parseInt(e.target.value), 5);
+          }}
           .value=${live(this.params.hpfSetting)}
         >
           <option value="0">40 Hz</option>
@@ -591,8 +594,8 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
             type="checkbox"
             .checked=${live(this.params.loopback === 1)}
             @change=${(e) => {
-          updateParamValue("Loopback", e.target.checked ? 1 : 0, 0);
-        }}
+              updateParamValue("Loopback", e.target.checked ? 1 : 0, 0);
+            }}
           >
           Loopback of DAW signal to Inputs 1/2
       </div>
