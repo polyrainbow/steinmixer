@@ -1,4 +1,8 @@
-import { parseSysExMessage, sendInitMessages } from "./utils.js";
+import {
+  getChannelIndexFromChannelId,
+  parseSysExMessage,
+  sendInitMessages,
+} from "./utils.js";
 import { UR44Params } from "./params.js";
 
 export const getMIDIDevices = async () => {
@@ -35,7 +39,7 @@ export const sendChangeParameterValue = (
   midiOutput,
   parameter,
   value,
-  channel = 0,
+  channelIndex = 0,
 ) => {
   const p0 = (parameter >> 7 * 0) & 0x7F;
   const p1 = (parameter >> 7 * 1) & 0x7F;
@@ -47,7 +51,7 @@ export const sendChangeParameterValue = (
   const v4 = (v32 >> 7 * 4) & 0x7F;
   const message = [
     0xF0, 0x43, 0x10, 0x3E, 0x14, 0x01, 0x01, 0x00,
-    p1, p0, 0x00, 0x00, channel, v4, v3, v2, v1, v0, 0xF7,
+    p1, p0, 0x00, 0x00, channelIndex, v4, v3, v2, v1, v0, 0xF7,
   ];
   midiOutput.send(message);
 };
@@ -71,7 +75,7 @@ export const init = async (messageHandler) => {
     if (messageParsed.type === "unknown") {
       console.log("Unknown message received", messageParsed.raw);
     } else if (messageParsed.type === "init") {
-      resolve(messageParsed);
+      resolve(messageParsed.values);
     } else if (messageParsed.type === "meter-update") {
       vuValues = messageParsed.values;
     } else {
@@ -89,14 +93,6 @@ export const getVuValues = (channelId) => {
   return vuValues[channelId];
 };
 
-const channelMap = {
-  "analog1": 0,
-  "analog2": 1,
-  "analog3": 2,
-  "analog4": 3,
-  "analog5": 4,
-  "analog6": 5,
-};
 
 export const updateParamValue = (paramName, value, channelId) => {
   if (!midiOutput) {
@@ -110,17 +106,17 @@ export const updateParamValue = (paramName, value, channelId) => {
   const param = UR44Params.get(paramName);
 
   // Check if we need to provide an input channel
-  const channel = param[5] === true
-    ? channelMap[channelId]
+  const channelIndex = param[5] === true
+    ? getChannelIndexFromChannelId(channelId)
     : "";
-  console.log("updateParamValue", paramName, value, channelId, channel);
+  console.log("updateParamValue", paramName, value, channelId, channelIndex);
 
-  if (channel < 0 || channel > 5) {
-    throw new Error("Invalid channel: " + channel);
+  if (channelIndex < 0 || channelIndex > 5) {
+    throw new Error("Invalid input index: " + channelIndex);
   }
 
   const paramNumber = param[0];
-  sendChangeParameterValue(midiOutput, paramNumber, value, channel);
+  sendChangeParameterValue(midiOutput, paramNumber, value, channelIndex);
 };
 
 export const selectActiveMix = (mix) => {

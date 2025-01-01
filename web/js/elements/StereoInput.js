@@ -117,7 +117,11 @@ customElements.define("stereo-input", class extends HTMLElement {
         }
         phantom-power-enabled=${this.getAttribute("phantom-power-enabled")}
         active-mix=${activeMix}
-        volume=${this.getAttribute("volume-r")}
+        volume=${
+          parseInt(this.getAttribute("link-inputs")) === 1
+            ? this.getAttribute("volume-l")
+            : this.getAttribute("volume-r")
+        }
         pan=${this.getAttribute("pan-r")}
         mute="${this.getAttribute("mute-r")}"
         solo="${this.getAttribute("solo-r")}"
