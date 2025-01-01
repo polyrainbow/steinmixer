@@ -27,11 +27,12 @@ models to test with. However, it should be straight-forward to adapt this tool.
 - Loopback
 - Highpass filter on inputs
 - Phase inversion on inputs
+- Stereo linking of channels
 
 ❌ What is not (yet) possible:
 
-- Send and return effects (reverb, delay)
-- Stereo linking of channels
+- Reverb
+- Insert effects (compressor, EQ)
 
 # Deploy & Develop
 
