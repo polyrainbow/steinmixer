@@ -1,14 +1,14 @@
-export const getChannelIndexFromChannelId = (channelId) => {
-  const map = {
-    "analog1": 0,
-    "analog2": 1,
-    "analog3": 2,
-    "analog4": 3,
-    "analog5": 4,
-    "analog6": 5,
-  };
+export const INPUT_CHANNEL_IDS = [
+  "analog1",
+  "analog2",
+  "analog3",
+  "analog4",
+  "analog5",
+  "analog6",
+];
 
-  return map[channelId];
+export const getChannelIndexFromChannelId = (channelId) => {
+  return INPUT_CHANNEL_IDS.indexOf(channelId);
 };
 
 

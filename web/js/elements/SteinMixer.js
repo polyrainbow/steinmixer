@@ -5,7 +5,7 @@ import {
 } from "../UR44/index.js";
 import "./StereoInput.js";
 import { html, render, live } from "../lit.js";
-import { getChannelIndexFromChannelId } from "../UR44/utils.js";
+import { getChannelIndexFromChannelId, INPUT_CHANNEL_IDS } from "../UR44/utils.js";
 
 const DEBUG_MODE = false;
 
@@ -80,15 +80,44 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
                 e.detail.volume,
               );
             } else {
-              // TODO: handle linked volume slider r
+              const originalChannelId = e.detail.channelId;
+              const originalChannelIndex = getChannelIndexFromChannelId(
+                originalChannelId,
+              );
+              let actualChannelIndex;
+
+              // when two channels are linked and user moves the right slider,
+              // we actually want to change the value of the left slider, so
+              // let's adjust the channelIndex if needed.
+              if (
+                originalChannelIndex === 1
+                && this.params.input0Linked === 1
+              ) {
+                actualChannelIndex = 0;
+              } else if (
+                originalChannelIndex === 3
+                && this.params.input2Linked === 1
+              ) {
+                actualChannelIndex = 2;
+              } else if (
+                originalChannelIndex === 5
+                && this.params.input4Linked
+              ) {
+                actualChannelIndex = 4;
+              } else {
+                actualChannelIndex = originalChannelIndex;
+              }
+
+              const channelId = INPUT_CHANNEL_IDS[actualChannelIndex];
+
               const paramKey = `mix${
                 parseInt(e.detail.mix) + 1
-              }Input${getChannelIndexFromChannelId(e.detail.channelId)}Volume`;
+              }Input${actualChannelIndex}Volume`;
               this.params[paramKey] = e.detail.volume;
               updateParamValue(
                 `InputMix${parseInt(e.detail.mix) + 1}Volume`,
                 e.detail.volume,
-                e.detail.channelId,
+                channelId,
               );
             }
             this.render();
