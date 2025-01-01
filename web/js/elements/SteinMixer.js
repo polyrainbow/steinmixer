@@ -5,6 +5,10 @@ import {
 } from "../UR44/index.js";
 import "./StereoInput.js";
 import { html, render, live } from "../lit.js";
+import {
+  getChannelIndexFromChannelId,
+  INPUT_CHANNEL_IDS,
+} from "../UR44/utils.js";
 
 const DEBUG_MODE = false;
 
@@ -45,6 +49,18 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       this.status = "ready";
       this.render();
 
+      Array.from(document.querySelectorAll("stereo-input"))
+        .forEach(si => {
+          si.addEventListener("link-channels", (e) => {
+            const paramKey = `input${
+              getChannelIndexFromChannelId(e.detail.channelIdL)
+            }Linked`;
+            const newValue = e.detail.linked;
+            this.params[paramKey] = newValue;
+            updateParamValue("InputLink", newValue, e.detail.channelIdL);
+          });
+        });
+
       Array.from(document.querySelectorAll("volume-slider"))
         .forEach(vs => {
           vs.addEventListener("volume", (e) => {
@@ -67,14 +83,44 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
                 e.detail.volume,
               );
             } else {
+              const originalChannelId = e.detail.channelId;
+              const originalChannelIndex = getChannelIndexFromChannelId(
+                originalChannelId,
+              );
+              let actualChannelIndex;
+
+              // when two channels are linked and user moves the right slider,
+              // we actually want to change the value of the left slider, so
+              // let's adjust the channelIndex if needed.
+              if (
+                originalChannelIndex === 1
+                && this.params.input0Linked === 1
+              ) {
+                actualChannelIndex = 0;
+              } else if (
+                originalChannelIndex === 3
+                && this.params.input2Linked === 1
+              ) {
+                actualChannelIndex = 2;
+              } else if (
+                originalChannelIndex === 5
+                && this.params.input4Linked
+              ) {
+                actualChannelIndex = 4;
+              } else {
+                actualChannelIndex = originalChannelIndex;
+              }
+
+              const channelId = INPUT_CHANNEL_IDS[actualChannelIndex];
+
               const paramKey = `mix${
                 parseInt(e.detail.mix) + 1
-              }Input${e.detail.channelId.substring(6)}Volume`;
+              }Input${actualChannelIndex}Volume`;
               this.params[paramKey] = e.detail.volume;
               updateParamValue(
                 `InputMix${parseInt(e.detail.mix) + 1}Volume`,
                 e.detail.volume,
-                e.detail.channelId,
+                channelId,
               );
             }
             this.render();
@@ -102,7 +148,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
             } else {
               const paramKey = `mix${
                 parseInt(e.detail.mix) + 1
-              }Input${e.detail.channelId.substring(6)}Mute`;
+              }Input${getChannelIndexFromChannelId(e.detail.channelId)}Mute`;
               this.params[paramKey] = e.detail.muted ? 0 : 1;
               updateParamValue(
                 `InputMix${parseInt(e.detail.mix) + 1}Mute`,
@@ -135,7 +181,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
             } else {
               const paramKey = `mix${
                 parseInt(e.detail.mix) + 1
-              }Input${e.detail.channelId.substring(6)}Solo`;
+              }Input${getChannelIndexFromChannelId(e.detail.channelId)}Solo`;
               this.params[paramKey] = e.detail.soloed ? 1 : 0;
               updateParamValue(
                 `InputMix${parseInt(e.detail.mix) + 1}Solo`,
@@ -172,7 +218,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
             } else {
               const paramKey = `mix${
                 parseInt(e.detail.mix) + 1
-              }Input${e.detail.channelId.substring(6)}Pan`;
+              }Input${getChannelIndexFromChannelId(e.detail.channelId)}Pan`;
               this.params[paramKey] = e.detail.pan;
               updateParamValue(
                 `InputMix${parseInt(e.detail.mix) + 1}Pan`,
@@ -188,7 +234,9 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         .forEach(fxSection => {
           fxSection.addEventListener("toggle-hpf", (e) => {
             const paramKey
-              = `input${e.detail.channelId.substring(6)}HpfEnabled`;
+              = `input${
+                getChannelIndexFromChannelId(e.detail.channelId)
+              }HpfEnabled`;
             this.params[paramKey] = Math.abs(1 - this.params[paramKey]);
 
             if (isNaN(this.params[paramKey])) {
@@ -205,7 +253,9 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
 
           fxSection.addEventListener("toggle-invert-phase", (e) => {
             const paramKey
-              = `input${e.detail.channelId.substring(6)}InvertPhaseEnabled`;
+              = `input${
+                getChannelIndexFromChannelId(e.detail.channelId)
+              }InvertPhaseEnabled`;
             this.params[paramKey] = Math.abs(1 - this.params[paramKey]);
 
             if (isNaN(this.params[paramKey])) {
@@ -241,7 +291,12 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       return;
     } else if (this.status === "no-interface") {
       const template
-        = "Could not find audio interface. Make sure it is connected.";
+        = html`<h1>Steinmixer</h1>
+        <p>Could not find audio interface. Make sure it is connected.
+        <br>
+        <button @click=${() => location.reload()}>
+          Reload page to check again
+        </button>`;
       render(template, this);
       return;
     } else if (this.status === "loading") {
@@ -257,176 +312,179 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         <button
           class=${this.activeMix === 0 ? "active" : ""}
           @click=${() => {
-      selectActiveMix(0);
-      this.activeMix = 0;
-      this.render();
-    }}
+            selectActiveMix(0);
+            this.activeMix = 0;
+            this.render();
+          }}
         >Mix 1</button>
         <button
           class=${this.activeMix === 1 ? "active" : ""}
           @click=${() => {
-      selectActiveMix(1);
-      this.activeMix = 1;
-      this.render();
-    }}
+            selectActiveMix(1);
+            this.activeMix = 1;
+            this.render();
+          }}
         >Mix 2</button>
       </div>
       <stereo-input
+        link-inputs=${this.params.input0Linked}
         title-l="Analog 1"
         title-r="Analog 2"
         channel-id-l="analog1"
         channel-id-r="analog2"
         volume-l=${
           this.activeMix === 0
-            ? this.params.mix1Input1Volume
-            : this.params.mix2Input1Volume
+            ? this.params.mix1Input0Volume
+            : this.params.mix2Input0Volume
         }
         volume-r=${
           this.activeMix === 0
-            ? this.params.mix1Input2Volume
-            : this.params.mix2Input2Volume
+            ? this.params.mix1Input1Volume
+            : this.params.mix2Input1Volume
         }
         phantom-power-available="true"
         phantom-power-enabled="${this.params.phantomPower0}"
         active-mix=${this.activeMix}
         pan-l=${
           this.activeMix === 0
-            ? this.params.mix1Input1Pan
-            : this.params.mix2Input1Pan
+            ? this.params.mix1Input0Pan
+            : this.params.mix2Input0Pan
         }
         pan-r=${
           this.activeMix === 0
-            ? this.params.mix1Input2Pan
-            : this.params.mix2Input2Pan
+            ? this.params.mix1Input1Pan
+            : this.params.mix2Input1Pan
           }
         mute-l=${
+          this.activeMix === 0
+            ? this.params.mix1Input0Mute
+            : this.params.mix2Input0Mute
+          }
+        mute-r=${
           this.activeMix === 0
             ? this.params.mix1Input1Mute
             : this.params.mix2Input1Mute
           }
-        mute-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input2Mute
-            : this.params.mix2Input2Mute
-          }
         solo-l=${
+          this.activeMix === 0
+            ? this.params.mix1Input0Solo
+            : this.params.mix2Input0Solo
+          }
+        solo-r=${
           this.activeMix === 0
             ? this.params.mix1Input1Solo
             : this.params.mix2Input1Solo
           }
-        solo-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input2Solo
-            : this.params.mix2Input2Solo
-          }
         hpf-available="true"
-        hpf-l-enabled=${this.params.input1HpfEnabled}
-        hpf-r-enabled=${this.params.input2HpfEnabled}
-        invert-phase-l-enabled=${this.params.input1InvertPhaseEnabled}
-        invert-phase-r-enabled=${this.params.input2InvertPhaseEnabled}
+        hpf-l-enabled=${this.params.input0HpfEnabled}
+        hpf-r-enabled=${this.params.input1HpfEnabled}
+        invert-phase-l-enabled=${this.params.input0InvertPhaseEnabled}
+        invert-phase-r-enabled=${this.params.input1InvertPhaseEnabled}
       ></stereo-input>
       <stereo-input
+        link-inputs=${this.params.input2Linked}
         title-l="Analog 3"
         title-r="Analog 4"
         channel-id-l="analog3"
         channel-id-r="analog4"
         volume-l=${
           this.activeMix === 0
-            ? this.params.mix1Input3Volume
-            : this.params.mix2Input3Volume
+            ? this.params.mix1Input2Volume
+            : this.params.mix2Input2Volume
           }
         volume-r=${
           this.activeMix === 0
-            ? this.params.mix1Input4Volume
-            : this.params.mix2Input4Volume
+            ? this.params.mix1Input3Volume
+            : this.params.mix2Input3Volume
           }
         phantom-power-available="true"
         phantom-power-enabled="${this.params.phantomPower1}"
         active-mix=${this.activeMix}
         pan-l=${
           this.activeMix === 0
-            ? this.params.mix1Input3Pan
-            : this.params.mix2Input3Pan
+            ? this.params.mix1Input2Pan
+            : this.params.mix2Input2Pan
           }
         pan-r=${
           this.activeMix === 0
-            ? this.params.mix1Input4Pan
-            : this.params.mix2Input4Pan
+            ? this.params.mix1Input3Pan
+            : this.params.mix2Input3Pan
           }
         mute-l=${
+          this.activeMix === 0
+            ? this.params.mix1Input2Mute
+            : this.params.mix2Input2Mute
+          }
+        mute-r=${
           this.activeMix === 0
             ? this.params.mix1Input3Mute
             : this.params.mix2Input3Mute
           }
-        mute-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input4Mute
-            : this.params.mix2Input4Mute
-          }
         solo-l=${
+          this.activeMix === 0
+            ? this.params.mix1Input2Solo
+            : this.params.mix2Input2Solo
+          }
+        solo-r=${
           this.activeMix === 0
             ? this.params.mix1Input3Solo
             : this.params.mix2Input3Solo
           }
-        solo-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input4Solo
-            : this.params.mix2Input4Solo
-          }
         hpf-available="true"
-        hpf-l-enabled=${this.params.input3HpfEnabled}
-        hpf-r-enabled=${this.params.input4HpfEnabled}
-        invert-phase-l-enabled=${this.params.input3InvertPhaseEnabled}
-        invert-phase-r-enabled=${this.params.input4InvertPhaseEnabled}
+        hpf-l-enabled=${this.params.input2HpfEnabled}
+        hpf-r-enabled=${this.params.input3HpfEnabled}
+        invert-phase-l-enabled=${this.params.input2InvertPhaseEnabled}
+        invert-phase-r-enabled=${this.params.input3InvertPhaseEnabled}
       ></stereo-input>
       <stereo-input
+        link-inputs=${this.params.input4Linked}
         title-l="Analog 5"
         title-r="Analog 6"
         channel-id-l="analog5"
         channel-id-r="analog6"
         volume-l=${
           this.activeMix === 0
-            ? this.params.mix1Input5Volume
-            : this.params.mix2Input5Volume
+            ? this.params.mix1Input4Volume
+            : this.params.mix2Input4Volume
         }
         volume-r=${
           this.activeMix === 0
-            ? this.params.mix1Input6Volume
-            : this.params.mix2Input6Volume
+            ? this.params.mix1Input5Volume
+            : this.params.mix2Input5Volume
         }
         active-mix=${this.activeMix}
         pan-l=${
           this.activeMix === 0
-            ? this.params.mix1Input5Pan
-            : this.params.mix2Input5Pan
+            ? this.params.mix1Input4Pan
+            : this.params.mix2Input4Pan
         }
         pan-r=${
           this.activeMix === 0
-            ? this.params.mix1Input6Pan
-            : this.params.mix2Input6Pan
+            ? this.params.mix1Input5Pan
+            : this.params.mix2Input5Pan
         }
         mute-l=${
+          this.activeMix === 0
+            ? this.params.mix1Input4Mute
+            : this.params.mix2Input4Mute
+        }
+        mute-r=${
           this.activeMix === 0
             ? this.params.mix1Input5Mute
             : this.params.mix2Input5Mute
         }
-        mute-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input6Mute
-            : this.params.mix2Input6Mute
-        }
         solo-l=${
+          this.activeMix === 0
+            ? this.params.mix1Input4Solo
+            : this.params.mix2Input4Solo
+        }
+        solo-r=${
           this.activeMix === 0
             ? this.params.mix1Input5Solo
             : this.params.mix2Input5Solo
         }
-        solo-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input6Solo
-            : this.params.mix2Input6Solo
-        }
-        invert-phase-l-enabled=${this.params.input5InvertPhaseEnabled}
-        invert-phase-r-enabled=${this.params.input6InvertPhaseEnabled}
+        invert-phase-l-enabled=${this.params.input4InvertPhaseEnabled}
+        invert-phase-r-enabled=${this.params.input5InvertPhaseEnabled}
       ></stereo-input>
       <channel-strip
         title="DAW"
@@ -484,9 +542,9 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         </label>
         <select id="phones-2-output-select"
           @change=${(e) => {
-          this.params.phones2Output = parseInt(e.target.value);
-          updateParamValue("Phones2Output", parseInt(e.target.value), 0);
-        }}
+            this.params.phones2Output = parseInt(e.target.value);
+            updateParamValue("Phones2Output", parseInt(e.target.value), 0);
+          }}
           .value=${live(this.params.phones2Output)}
         >
           <option value="0">Mix 1</option>
@@ -499,9 +557,9 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         </label>
         <select id="input-56-level-select"
           @change=${(e) => {
-          updateParamValue("Input56Level", parseInt(e.target.value), 0);
-        }}
-          .value=${live(this.params.input56Level)}
+            updateParamValue("Input56Level", parseInt(e.target.value), 0);
+          }}
+          .value=${live(this.params.input45Level)}
         >
           <option value="1">-10dBV</option>
           <option value="0">+4dBu</option>
@@ -514,13 +572,13 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         <select
           id="hpf-level-select"
           @change=${(e) => {
-          updateParamValue("HPFSetting", parseInt(e.target.value), 0);
-          updateParamValue("HPFSetting", parseInt(e.target.value), 1);
-          updateParamValue("HPFSetting", parseInt(e.target.value), 2);
-          updateParamValue("HPFSetting", parseInt(e.target.value), 3);
-          updateParamValue("HPFSetting", parseInt(e.target.value), 4);
-          updateParamValue("HPFSetting", parseInt(e.target.value), 5);
-        }}
+            updateParamValue("HPFSetting", parseInt(e.target.value), 0);
+            updateParamValue("HPFSetting", parseInt(e.target.value), 1);
+            updateParamValue("HPFSetting", parseInt(e.target.value), 2);
+            updateParamValue("HPFSetting", parseInt(e.target.value), 3);
+            updateParamValue("HPFSetting", parseInt(e.target.value), 4);
+            updateParamValue("HPFSetting", parseInt(e.target.value), 5);
+          }}
           .value=${live(this.params.hpfSetting)}
         >
           <option value="0">40 Hz</option>
@@ -536,8 +594,8 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
             type="checkbox"
             .checked=${live(this.params.loopback === 1)}
             @change=${(e) => {
-          updateParamValue("Loopback", e.target.checked ? 1 : 0, 0);
-        }}
+              updateParamValue("Loopback", e.target.checked ? 1 : 0, 0);
+            }}
           >
           Loopback of DAW signal to Inputs 1/2
       </div>

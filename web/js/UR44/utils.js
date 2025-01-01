@@ -1,3 +1,17 @@
+export const INPUT_CHANNEL_IDS = [
+  "analog1",
+  "analog2",
+  "analog3",
+  "analog4",
+  "analog5",
+  "analog6",
+];
+
+export const getChannelIndexFromChannelId = (channelId) => {
+  return INPUT_CHANNEL_IDS.indexOf(channelId);
+};
+
+
 export const getDBFSFromSliderValue = (val) => {
   /*
     Vol db steps
@@ -289,74 +303,77 @@ export const parseSysExMessage = (message) => {
   )) {
     return { "type": "keepalive" };
   } else if (message.length === 3520) { console.log(message);
-    return {
-      "type": "init",
-      input1InvertPhaseEnabled: message[951],
-      input2InvertPhaseEnabled: message[952],
-      input3InvertPhaseEnabled: message[953],
-      input4InvertPhaseEnabled: message[954],
-      input5InvertPhaseEnabled: message[955],
-      input6InvertPhaseEnabled: message[956],
-      input1HpfEnabled: message[958],
-      input2HpfEnabled: message[959],
-      input3HpfEnabled: message[960],
-      input4HpfEnabled: message[961],
+    const values = {
+      input0Linked: message[937], // and 938
+      input2Linked: message[939], // and 940
+      // 941 empty
+      input4Linked: message[942], // and 943
+      input0InvertPhaseEnabled: message[951],
+      input1InvertPhaseEnabled: message[952],
+      input2InvertPhaseEnabled: message[953],
+      input3InvertPhaseEnabled: message[954],
+      input4InvertPhaseEnabled: message[955],
+      input5InvertPhaseEnabled: message[956],
+      input0HpfEnabled: message[958],
+      input1HpfEnabled: message[959],
+      input2HpfEnabled: message[960],
+      input3HpfEnabled: message[961],
       hpfSetting: message[964],
-      mix1Input1Solo: message[999],
-      mix1Input2Solo: message[1000],
-      mix1Input3Solo: message[1001],
-      mix1Input4Solo: message[1002],
-      mix1Input5Solo: message[1003],
-      mix1Input6Solo: message[1004],
+      mix1Input0Solo: message[999],
+      mix1Input1Solo: message[1000],
+      mix1Input2Solo: message[1001],
+      mix1Input3Solo: message[1002],
+      mix1Input4Solo: message[1003],
+      mix1Input5Solo: message[1004],
       // 1005 empty
-      mix2Input1Solo: message[1006],
-      mix2Input2Solo: message[1007],
-      mix2Input3Solo: message[1008],
-      mix2Input4Solo: message[1009],
-      mix2Input5Solo: message[1010],
-      mix2Input6Solo: message[1011],
-      mix1Input1Mute: message[1012],
+      mix2Input0Solo: message[1006],
+      mix2Input1Solo: message[1007],
+      mix2Input2Solo: message[1008],
+      mix2Input3Solo: message[1009],
+      mix2Input4Solo: message[1010],
+      mix2Input5Solo: message[1011],
+      mix1Input0Mute: message[1012],
       // 1013 empty
-      mix1Input2Mute: message[1014],
-      mix1Input3Mute: message[1015],
-      mix1Input4Mute: message[1016],
-      mix1Input5Mute: message[1017],
-      mix1Input6Mute: message[1018],
-      mix2Input1Mute: message[1019],
-      mix2Input2Mute: message[1020],
+      mix1Input1Mute: message[1014],
+      mix1Input2Mute: message[1015],
+      mix1Input3Mute: message[1016],
+      mix1Input4Mute: message[1017],
+      mix1Input5Mute: message[1018],
+      mix2Input0Mute: message[1019],
+      mix2Input1Mute: message[1020],
       // 1021 empty
-      mix2Input3Mute: message[1022],
-      mix2Input4Mute: message[1023],
-      mix2Input5Mute: message[1024],
-      mix2Input6Mute: message[1025],
-      mix1Input1Volume: message[1033],
-      mix1Input2Volume: message[1034],
-      mix1Input3Volume: message[1035],
-      mix1Input4Volume: message[1036],
+      mix2Input2Mute: message[1022],
+      mix2Input3Mute: message[1023],
+      mix2Input4Mute: message[1024],
+      mix2Input5Mute: message[1025],
+      mix1Input0Volume: message[1033],
+      mix1Input1Volume: message[1034],
+      mix1Input2Volume: message[1035],
+      mix1Input3Volume: message[1036],
       // 1037 empty
-      mix1Input5Volume: message[1038],
-      mix1Input6Volume: message[1039],
-      mix2Input1Volume: message[1040],
-      mix2Input2Volume: message[1041],
-      mix2Input3Volume: message[1042],
-      mix2Input4Volume: message[1043],
-      mix2Input5Volume: message[1044],
+      mix1Input4Volume: message[1038],
+      mix1Input5Volume: message[1039],
+      mix2Input0Volume: message[1040],
+      mix2Input1Volume: message[1041],
+      mix2Input2Volume: message[1042],
+      mix2Input3Volume: message[1043],
+      mix2Input4Volume: message[1044],
       // 1045 empty
-      mix2Input6Volume: message[1046],
+      mix2Input5Volume: message[1046],
       // 1053 empty
-      mix1Input1Pan: message[1054] > 64 ? message[1054] - 128 : message[1054],
-      mix1Input2Pan: message[1055] > 64 ? message[1055] - 128 : message[1055],
-      mix1Input3Pan: message[1056] > 64 ? message[1056] - 128 : message[1056],
-      mix1Input4Pan: message[1057] > 64 ? message[1057] - 128 : message[1057],
-      mix1Input5Pan: message[1058] > 64 ? message[1058] - 128 : message[1058],
-      mix1Input6Pan: message[1059] > 64 ? message[1059] - 128 : message[1059],
-      mix2Input1Pan: message[1060] > 64 ? message[1060] - 128 : message[1060],
+      mix1Input0Pan: message[1054] > 64 ? message[1054] - 128 : message[1054],
+      mix1Input1Pan: message[1055] > 64 ? message[1055] - 128 : message[1055],
+      mix1Input2Pan: message[1056] > 64 ? message[1056] - 128 : message[1056],
+      mix1Input3Pan: message[1057] > 64 ? message[1057] - 128 : message[1057],
+      mix1Input4Pan: message[1058] > 64 ? message[1058] - 128 : message[1058],
+      mix1Input5Pan: message[1059] > 64 ? message[1059] - 128 : message[1059],
+      mix2Input0Pan: message[1060] > 64 ? message[1060] - 128 : message[1060],
       // 1061 empty
-      mix2Input2Pan: message[1062] > 64 ? message[1062] - 128 : message[1062],
-      mix2Input3Pan: message[1063] > 64 ? message[1063] - 128 : message[1063],
-      mix2Input4Pan: message[1064] > 64 ? message[1064] - 128 : message[1064],
-      mix2Input5Pan: message[1065] > 64 ? message[1065] - 128 : message[1065],
-      mix2Input6Pan: message[1066] > 64 ? message[1066] - 128 : message[1066],
+      mix2Input1Pan: message[1062] > 64 ? message[1062] - 128 : message[1062],
+      mix2Input2Pan: message[1063] > 64 ? message[1063] - 128 : message[1063],
+      mix2Input3Pan: message[1064] > 64 ? message[1064] - 128 : message[1064],
+      mix2Input4Pan: message[1065] > 64 ? message[1065] - 128 : message[1065],
+      mix2Input5Pan: message[1066] > 64 ? message[1066] - 128 : message[1066],
       mix1DawSolo: message[1067],
       mix2DawSolo: message[1068],
       // 1069 empty
@@ -376,7 +393,12 @@ export const parseSysExMessage = (message) => {
       loopback: message[3499],
       phantomPower0: message[3504],
       phantomPower1: message[3505],
-      input56Level: message[3507],
+      input45Level: message[3507],
+    };
+
+    return {
+      "type": "init",
+      values,
     };
   }
 

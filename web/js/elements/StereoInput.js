@@ -1,4 +1,4 @@
-import { html, render } from "../lit.js";
+import { html, live, render } from "../lit.js";
 
 customElements.define("stereo-input", class extends HTMLElement {
   constructor() {
@@ -6,6 +6,7 @@ customElements.define("stereo-input", class extends HTMLElement {
   }
 
   static observedAttributes = [
+    "link-inputs",
     "phantom-power-enabled",
     "channel-id-l",
     "channel-id-r",
@@ -29,6 +30,7 @@ customElements.define("stereo-input", class extends HTMLElement {
     // here without check for elements that are really updated during element
     // lifetime
     if ([
+      "link-inputs",
       "phantom-power-enabled",
       "active-mix",
       "pan-l",
@@ -56,22 +58,38 @@ customElements.define("stereo-input", class extends HTMLElement {
     const activeMix = this.getAttribute("active-mix");
 
     const template = html`
-    <!-- <div class="stereo-toggle">
-      <label>
+    <div class="stereo-toggle">
+      <label title="Link channels">
         <input
           type="checkbox"
+          .checked=${live(parseInt(this.getAttribute("link-inputs")) === 1)}
           @change=${(e) => {
             this.dispatchEvent(new CustomEvent("link-channels", {
               detail: {
-                linked: e.target.checked,
+                linked: e.target.checked ? 1 : 0,
                 channelIdL: this.getAttribute("channel-id-l"),
               },
             }));
           }
         }>
-        Link channels
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <circle
+                cx="35" cy="50" r="15" stroke="black"
+                stroke-width="5" fill="none"
+              >
+              </circle>
+              <line x1="35" y1="50" x2="65" y2="50" stroke="black"
+                stroke-width="10" fill="none"
+              ></line>
+              <circle
+                cx="65" cy="50" r="15" stroke="black"
+                stroke-width="5" fill="none"
+              >
+              </circle>
+          </svg>
+          <span>Link channels</span>
       </label>
-    </div> -->
+    </div>
     <div class="strips-container">
       <channel-strip
         type="analog"
@@ -99,7 +117,11 @@ customElements.define("stereo-input", class extends HTMLElement {
         }
         phantom-power-enabled=${this.getAttribute("phantom-power-enabled")}
         active-mix=${activeMix}
-        volume=${this.getAttribute("volume-r")}
+        volume=${
+          parseInt(this.getAttribute("link-inputs")) === 1
+            ? this.getAttribute("volume-l")
+            : this.getAttribute("volume-r")
+        }
         pan=${this.getAttribute("pan-r")}
         mute="${this.getAttribute("mute-r")}"
         solo="${this.getAttribute("solo-r")}"

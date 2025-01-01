@@ -1,5 +1,6 @@
 body {
   font-family: sans-serif;
+  user-select: none;
 }
 
 h1 {
@@ -34,7 +35,26 @@ stein-mixer div {
     flex-direction: column;
 
     .stereo-toggle {
-      background-color: aqua;
+      background-color: grey;
+      width: 100%;
+      max-height: 2em;
+      
+
+      :has(input:checked) {
+        background-color: #ffe700;
+      }
+
+      label {
+        height: 100%;
+        display: flex;
+        width: 100%;
+        justify-content: center;
+        align-items: center;
+
+        svg {
+          height: 100%;
+        }
+      }
     }
   }
 
