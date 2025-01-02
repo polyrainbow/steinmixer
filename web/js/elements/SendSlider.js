@@ -1,14 +1,16 @@
 import { html, render, live } from "../lit.js";
+import { getDBFSFromSliderValue } from "../UR44/utils.js";
+import { getDBFSLabel } from "../utils.js";
 
-customElements.define("pan-slider", class extends HTMLElement {
+customElements.define("send-slider", class extends HTMLElement {
   constructor() {
     super();
   }
 
-  static observedAttributes = ["pan", "channel-id", "active-mix"];
+  static observedAttributes = ["send", "channel-id", "active-mix"];
 
   attributeChangedCallback(name, oldValue, newValue) {
-    if (["pan", "channel-id", "active-mix"].includes(name)) {
+    if (["send", "channel-id", "active-mix"].includes(name)) {
       this.render();
     }
   }
@@ -20,14 +22,14 @@ customElements.define("pan-slider", class extends HTMLElement {
   render() {
     const channelId = this.getAttribute("channel-id");
     const mix = this.getAttribute("active-mix");
-    const pan = parseInt(this.getAttribute("pan"));
+    const send = parseInt(this.getAttribute("send"));
 
     const handleInput = (e) => {
-      const newPan = parseInt(e.target.value);
+      const newSend = parseInt(e.target.value);
 
-      this.dispatchEvent(new CustomEvent("pan", {
+      this.dispatchEvent(new CustomEvent("send", {
         detail: {
-          pan: newPan,
+          send: newSend,
           channelId,
           mix,
         },
@@ -37,11 +39,11 @@ customElements.define("pan-slider", class extends HTMLElement {
     };
 
     const handleDblClick = (e) => {
-      const newPan = 0;
+      const newSend = 0;
 
-      this.dispatchEvent(new CustomEvent("pan", {
+      this.dispatchEvent(new CustomEvent("send", {
         detail: {
-          pan: newPan,
+          send: newSend,
           channelId,
           mix,
         },
@@ -53,18 +55,14 @@ customElements.define("pan-slider", class extends HTMLElement {
     const template = html`
     <input
       type="range"
-      max="16"
-      min="-16"
-      .value=${live(pan)}
+      max="127"
+      min="0"
+      .value=${live(send)}
       @input=${handleInput}
       @dblclick=${handleDblClick}
-      title="Pan"
+      title="Reverb send"
     >
-    <span>${pan === 0
-      ? "C"
-      : (pan > 0
-        ? pan.toString() + "R"
-        : Math.abs(pan).toString() + "L")}</span>`;
+    <span>${getDBFSLabel(send)}</span>`;
 
     render(template, this);
   }

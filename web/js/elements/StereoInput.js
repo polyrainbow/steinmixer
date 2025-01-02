@@ -23,6 +23,8 @@ customElements.define("stereo-input", class extends HTMLElement {
     "hpf-r-enabled",
     "invert-phase-l-enabled",
     "invert-phase-r-enabled",
+    "reverb-send-l",
+    "reverb-send-r",
   ];
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -45,6 +47,8 @@ customElements.define("stereo-input", class extends HTMLElement {
       "hpf-r-enabled",
       "invert-phase-l-enabled",
       "invert-phase-r-enabled",
+      "reverb-send-l",
+      "reverb-send-r",
     ].includes(name)) {
       this.render();
     }
@@ -107,6 +111,7 @@ customElements.define("stereo-input", class extends HTMLElement {
         hpf-available="${this.getAttribute("hpf-available")}"
         hpf-enabled="${this.getAttribute("hpf-l-enabled")}"
         invert-phase-enabled="${this.getAttribute("invert-phase-l-enabled")}"
+        reverb-send="${this.getAttribute("reverb-send-l")}"
       ></channel-strip>
       <channel-strip
         type="analog"
@@ -128,6 +133,7 @@ customElements.define("stereo-input", class extends HTMLElement {
         hpf-available="${this.getAttribute("hpf-available")}"
         hpf-enabled="${this.getAttribute("hpf-r-enabled")}"
         invert-phase-enabled="${this.getAttribute("invert-phase-r-enabled")}"
+        reverb-send="${this.getAttribute("reverb-send-r")}"
       ></channel-strip>
     </div>`;
 

@@ -19,6 +19,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
 
   status = "loading";
   params;
+  openSidePanel = null;
   activeMix = 0;
 
   async connectedCallback() {
@@ -230,6 +231,23 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
           });
         });
 
+        Array.from(document.querySelectorAll("send-slider"))
+        .forEach(ps => {
+          ps.addEventListener("send", (e) => {
+            const paramKey
+              = `input${
+                getChannelIndexFromChannelId(e.detail.channelId)
+              }ReverbSend`;
+            this.params[paramKey] = e.detail.send;
+            updateParamValue(
+              "InputReverbSend",
+              e.detail.send,
+              e.detail.channelId,
+            );
+            this.render();
+          });
+        });
+
       Array.from(document.querySelectorAll("fx-section"))
         .forEach(fxSection => {
           fxSection.addEventListener("toggle-hpf", (e) => {
@@ -380,6 +398,8 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         hpf-r-enabled=${this.params.input1HpfEnabled}
         invert-phase-l-enabled=${this.params.input0InvertPhaseEnabled}
         invert-phase-r-enabled=${this.params.input1InvertPhaseEnabled}
+        reverb-send-l=${this.params.input0ReverbSend}
+        reverb-send-r=${this.params.input1ReverbSend}
       ></stereo-input>
       <stereo-input
         link-inputs=${this.params.input2Linked}
@@ -435,6 +455,8 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         hpf-r-enabled=${this.params.input3HpfEnabled}
         invert-phase-l-enabled=${this.params.input2InvertPhaseEnabled}
         invert-phase-r-enabled=${this.params.input3InvertPhaseEnabled}
+        reverb-send-l=${this.params.input2ReverbSend}
+        reverb-send-r=${this.params.input3ReverbSend}
       ></stereo-input>
       <stereo-input
         link-inputs=${this.params.input4Linked}
@@ -485,6 +507,8 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         }
         invert-phase-l-enabled=${this.params.input4InvertPhaseEnabled}
         invert-phase-r-enabled=${this.params.input5InvertPhaseEnabled}
+        reverb-send-l=${this.params.input4ReverbSend}
+        reverb-send-r=${this.params.input5ReverbSend}
       ></stereo-input>
       <channel-strip
         title="DAW"
@@ -493,7 +517,11 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         subchannel-id-l="dawL"
         subchannel-id-r="dawR"
         active-mix=${this.activeMix}
-        volume=${this.params.mix1DawVolume}
+        volume=${
+          this.activeMix === 0
+            ? this.params.mix1DawVolume
+            : this.params.mix2DawVolume
+        }
         pan=${
           this.activeMix === 0
             ? this.params.mix1DawPan
@@ -532,7 +560,26 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
             ? this.params.mix1MainMute
             : this.params.mix2MainMute
         }
+        @open-master-reverb=${() => {
+          this.openSidePanel = "reverb";
+          this.render();
+        }}
       ></channel-strip>
+      ${
+        true // this.openSidePanel === "reverb" for now, there is only this panel
+          ? html`<master-reverb
+            active-mix=${this.activeMix}
+            reverb-type=${this.params.reverbType}
+            reverb-time=${this.params.reverbTime}
+            reverb-output-mix=${this.params.reverbOutputMix}
+            reverb-volume=${
+              this.activeMix === 0
+                ? this.params.mix1ReverbVolume
+                : this.params.mix2ReverbVolume
+            }
+          ></master-reverb>`
+          : ""
+      }
     </div>
 
     <div class="settings">
@@ -572,12 +619,14 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         <select
           id="hpf-level-select"
           @change=${(e) => {
-            updateParamValue("HPFSetting", parseInt(e.target.value), 0);
-            updateParamValue("HPFSetting", parseInt(e.target.value), 1);
-            updateParamValue("HPFSetting", parseInt(e.target.value), 2);
-            updateParamValue("HPFSetting", parseInt(e.target.value), 3);
-            updateParamValue("HPFSetting", parseInt(e.target.value), 4);
-            updateParamValue("HPFSetting", parseInt(e.target.value), 5);
+            const value = parseInt(e.target.value);
+            updateParamValue("HPFSetting", value, 0);
+            updateParamValue("HPFSetting", value, 1);
+            updateParamValue("HPFSetting", value, 2);
+            updateParamValue("HPFSetting", value, 3);
+            updateParamValue("HPFSetting", value, 4);
+            updateParamValue("HPFSetting", value, 5);
+            this.params.hpfSetting = value;
           }}
           .value=${live(this.params.hpfSetting)}
         >

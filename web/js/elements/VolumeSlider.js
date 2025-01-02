@@ -1,19 +1,12 @@
 import { getDBFSFromSliderValue } from "../UR44/utils.js";
 import { html, render, live } from "../lit.js";
+import { getDBFSLabel } from "../utils.js";
 
 customElements.define("volume-slider", class extends HTMLElement {
   constructor() {
     super();
-    this.formatter = new Intl.NumberFormat(
-      "en-US",
-      {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      },
-    );
   }
 
-  formatter;
 
   static observedAttributes = [
     "phantom-power-enabled",
@@ -138,8 +131,7 @@ customElements.define("volume-slider", class extends HTMLElement {
       @input=${handleInput}
       @dblclick=${handleDblClick}
     >
-    <span class="volume-level">${
-      this.formatter.format(getDBFSFromSliderValue(volume))} dB</span>`;
+    <span class="volume-level">${getDBFSLabel(volume)}</span>`;
 
     render(template, this);
   }

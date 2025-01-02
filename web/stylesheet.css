@@ -1,256 +1,339 @@
-body {
-  font-family: sans-serif;
-  user-select: none;
-}
+@layer theme, utilities;
 
-h1 {
-  margin: 0.2em 0;
-}
-
-stein-mixer div {
-  display: flex;
-  gap: 0.2em;
-
-  .mix-select {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-
-    button {
-      width: 100%;
-      font-size: larger;
-      border-radius: 0;
-      background: lightgray;
-      padding: 0.5em;
-      cursor: pointer;
-
-      &.active {
-        background-color: lime;
-      }
-    }
+@layer theme {
+  body {
+    font-family: sans-serif;
+    user-select: none;
   }
 
-  stereo-input {
+  h1 {
+    margin: 0.2em 0;
+  }
+
+  button {
+    cursor: pointer;
+    border-radius: 0;
+    border: 0.15em solid grey;
+  }
+
+  input[type="range"] {
+    appearance: none;
+    cursor: pointer;
+    border-radius: 0.3rem;
+    background-color: grey;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    background-color: white;
+    border-radius: 0.3rem;
+    height: 1rem;
+    width: 1rem;
+  }
+
+  select {
+    font-size: large;
+  }
+}
+
+@layer utilities {
+  stein-mixer div {
     display: flex;
-    flex-direction: column;
+    gap: 0.2em;
 
-    .stereo-toggle {
-      background-color: grey;
-      width: 100%;
-      max-height: 2em;
-      
+    .mix-select {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
 
-      :has(input:checked) {
-        background-color: #ffe700;
-      }
-
-      label {
-        height: 100%;
-        display: flex;
+      button {
         width: 100%;
-        justify-content: center;
-        align-items: center;
+        font-size: larger;
+        padding: 0.5em;
+        white-space: nowrap;
 
-        svg {
-          height: 100%;
-        }
-      }
-    }
-  }
-
-  channel-strip {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1em;
-    padding: 0.2em;
-    padding-top: 1em;
-    background-color: lightgray;
-    justify-content: flex-end;
-
-    fx-section {
-      display: flex;
-      gap: 0.2em;
-
-      vu-meter {
-        height: 8em;
-        display: flex;
-        background: black;
-        width: 1.2em;
-        align-items: self-end;
-        position: relative;
-
-        .momentary-overlay{
-          height: 0em;
+        &.active {
           background-color: lime;
-          position: relative;
-          bottom: 0;
-          width: 100%;
-        }
-
-        .max-bar {
-          background-color: white;
-          height: 0.2em;
-          width: 100%;
-          position: absolute;
-        }
-      }
-
-      .controls {
-        display: flex;
-        flex-direction: column;
-
-        button {
-          display: flex;
-
-          svg {
-            width: 1.5em;
-          }
-        }
-
-        .hpf-button {
-          &.enabled {
-            background: lime;
-          }
-        }
-
-        .invert-phase-button {
-          &.enabled {
-            background: lime;
-          }
         }
       }
     }
 
-    pan-slider {
+    stereo-input {
       display: flex;
       flex-direction: column;
-      align-items: center;
 
-      input[type="range"] {
-        width: 6em;
-        height: 1em;
-        appearance: none;
-        background-color: rgb(0, 162, 0);
-        cursor: pointer;
-        border-radius: 0.3rem;
-      }
-  
-      input[type="range"]::-webkit-slider-thumb {
-        appearance: none;
-        background-color: white;
-        border-radius: 0.3rem;
-        height: 1rem;
-        width: 1rem;
-      }
-    }
+      .stereo-toggle {
+        background-color: grey;
+        width: 100%;
+        max-height: 2em;
+        
 
-    volume-slider {
-      display: grid;
-      grid-template: "a b" "c c";
-      flex-direction: column;
-      align-items: center;
-      gap: 0.8em;
-      width: 100%;
-
-      .buttons {
-        display: flex;
-        flex-direction: column;
-        background-color: transparent;
-        align-self: self-start;
-        align-items: center;
-
-        button {
-          background-color: grey;
-          font-weight: bold;
-          border: 0.15rem solid black;
-          cursor: pointer;
-          width: 2.2rem;
-          aspect-ratio: 1;
-          font-size: larger;
-        }
-
-        .solo-button.active {
+        :has(input:checked) {
           background-color: #ffe700;
         }
 
-        .mute-button.active {
-          background-color: crimson;
-        }
-
-        .phantom-voltage-indicator {
-          background-color: grey;
-          border: 0.15rem solid black;
-          width: 1.5rem;
-          box-sizing: border-box;
-          aspect-ratio: 1;
-          font-size: small;
+        label {
+          height: 100%;
           display: flex;
+          width: 100%;
+          justify-content: center;
           align-items: center;
-          border-radius: 100%;
-          margin-top: 4em;
 
-          &.enabled {
-            background-color: crimson;
+          svg {
+            height: 100%;
+          }
+        }
+      }
+    }
+
+    channel-strip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1em;
+      padding: 0.2em;
+      padding-top: 1em;
+      background-color: lightgray;
+      justify-content: flex-end;
+
+      fx-section {
+        display: flex;
+        gap: 0.2em;
+
+        vu-meter {
+          height: 8em;
+          display: flex;
+          background: black;
+          width: 1.2em;
+          align-items: self-end;
+          position: relative;
+
+          .momentary-overlay{
+            height: 0em;
+            background-color: lime;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+          }
+
+          .max-bar {
+            background-color: white;
+            height: 0.2em;
+            width: 100%;
+            position: absolute;
           }
         }
 
-        .phantom-voltage-indicator-label {
-          font-size: small;
+        .controls {
+          display: flex;
+          flex-direction: column;
+
+          button {
+            display: flex;
+
+            svg {
+              width: 1.5em;
+            }
+          }
+
+          .hpf-button {
+            &.enabled {
+              background: lime;
+            }
+          }
+
+          .invert-phase-button {
+            &.enabled {
+              background: lime;
+            }
+          }
         }
       }
+
+      pan-slider {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
+        input[type="range"] {
+          width: 6em;
+          height: 1em;
+          appearance: none;
+          background-color: rgb(0, 162, 0);
+          cursor: pointer;
+          border-radius: 0.3rem;
+        }
     
-      input[type="range"] {
-        writing-mode: vertical-lr;
-        direction: rtl;
-        height: 15em;
-        width: 1em;
-        appearance: none;
-        background-color: black;
-        cursor: pointer;
-        border-radius: 0.3rem;
+        input[type="range"]::-webkit-slider-thumb {
+          appearance: none;
+          background-color: white;
+          border-radius: 0.3rem;
+          height: 1rem;
+          width: 1rem;
+        }
       }
 
-      input[type="range"]::-webkit-slider-thumb {
-        appearance: none;
-        margin-top: -12px; /* Centers thumb on the track */
-        background-color: #0067ff;
-        border-radius: 0.3rem;
-        height: 3.5rem;
-        width: 2rem;
+      send-slider {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
+        input[type="range"] {
+          width: 6em;
+          height: 1em;
+          appearance: none;
+          background-color: rgb(0, 152, 212);
+          cursor: pointer;
+          border-radius: 0.3rem;
+        }
+    
+        input[type="range"]::-webkit-slider-thumb {
+          appearance: none;
+          background-color: white;
+          border-radius: 0.3rem;
+          height: 1rem;
+          width: 1rem;
+        }
       }
 
-      .volume-level {
-        grid-area: c;
-        text-align: center;
+      .daw-reverb-placeholder {
+        height: 36px;
       }
+
+      volume-slider {
+        display: grid;
+        grid-template: "a b" "c c";
+        flex-direction: column;
+        align-items: center;
+        gap: 0.8em;
+        width: 100%;
+
+        .buttons {
+          display: flex;
+          flex-direction: column;
+          background-color: transparent;
+          align-self: self-start;
+          align-items: center;
+
+          button {
+            background-color: grey;
+            font-weight: bold;
+            border: 0.15rem solid black;
+            cursor: pointer;
+            width: 2.2rem;
+            aspect-ratio: 1;
+            font-size: larger;
+          }
+
+          .solo-button.active {
+            background-color: #ffe700;
+          }
+
+          .mute-button.active {
+            background-color: crimson;
+          }
+
+          .phantom-voltage-indicator {
+            background-color: grey;
+            border: 0.15rem solid black;
+            width: 1.5rem;
+            box-sizing: border-box;
+            aspect-ratio: 1;
+            font-size: small;
+            display: flex;
+            align-items: center;
+            border-radius: 100%;
+            margin-top: 4em;
+
+            &.enabled {
+              background-color: crimson;
+            }
+          }
+
+          .phantom-voltage-indicator-label {
+            font-size: small;
+          }
+        }
       
-    }
+        input[type="range"] {
+          writing-mode: vertical-lr;
+          direction: rtl;
+          height: 15em;
+          width: 1em;
+          appearance: none;
+          background-color: black;
+          cursor: pointer;
+          border-radius: 0.3rem;
+        }
 
-    .title {
-      text-transform: uppercase;
-      color: #3e3e3e;
-      font-weight: bold;
+        input[type="range"]::-webkit-slider-thumb {
+          appearance: none;
+          margin-top: -12px; /* Centers thumb on the track */
+          background-color: #0067ff;
+          border-radius: 0.3rem;
+          height: 3.5rem;
+          width: 2rem;
+        }
+
+        .volume-level {
+          grid-area: c;
+          text-align: center;
+        }
+        
+      }
+
+      .title {
+        text-transform: uppercase;
+        color: #3e3e3e;
+        font-weight: bold;
+      }
     }
   }
-}
 
-channel-strip[type="master"] volume-slider input[type="range"]::-webkit-slider-thumb {
-  background-color: crimson;
-}
+  channel-strip[type="master"] volume-slider input[type="range"]::-webkit-slider-thumb {
+    background-color: crimson;
+  }
 
-.settings {
-  padding: 1em;
-  gap: 1em;
-  font-size: large;
-  font-family: sans-serif;
-}
+  .side-panel {
+    background-color: lightgrey;
+    min-width: 3em;
+    padding: 1em;
+    height: 537px;
+    display: flex;
+    flex-direction: column;
 
-.setting {
-  display: flex;
-  flex-direction: column;
-}
+    h2 {
+      margin-top: 0;
+      margin-bottom: 0.5em;
+    }
 
-select {
-  font-size: large;
+    .settings {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: wrap;
+      max-height: 85%;
+      width: 100%;
+      padding: 0;
+
+      input, select {
+        display: block;
+      }
+
+      select {
+        width: 100%;
+      }
+    }
+  }
+
+  .settings {
+    padding: 1em;
+    gap: 1em;
+    font-size: large;
+    font-family: sans-serif;
+  }
+  
+  .setting {
+    display: flex;
+    flex-direction: column;
+  }
 }

@@ -17,6 +17,7 @@ customElements.define("channel-strip", class extends HTMLElement {
     "solo",
     "hpf-enabled",
     "invert-phase-enabled",
+    "reverb-send",
   ];
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -29,6 +30,7 @@ customElements.define("channel-strip", class extends HTMLElement {
       "solo",
       "hpf-enabled",
       "invert-phase-enabled",
+      "reverb-send",
     ].includes(name)) {
       this.render();
     }
@@ -50,6 +52,24 @@ customElements.define("channel-strip", class extends HTMLElement {
       hpf-enabled=${this.getAttribute("hpf-enabled")}
       invert-phase-enabled=${this.getAttribute("invert-phase-enabled")}
     ></fx-section>
+    ${
+      this.getAttribute("type") === "analog"
+        ? html`<send-slider
+          send=${this.getAttribute("reverb-send")}
+          channel-id=${this.getAttribute("channel-id")}
+        ></send-slider>`
+        : this.getAttribute("type") === "master"
+          ? html`<button
+            class="master-reverb"
+            style="visibility: hidden"
+            @click=${() => {
+              this.dispatchEvent(
+                new Event("open-master-reverb", { bubbles: true })
+              )
+            }}
+          >Reverb<br>settings</button>`
+          : html`<div class="daw-reverb-placeholder"></div>`
+    }
     <pan-slider
       channel-id=${this.getAttribute("channel-id")}
       active-mix=${this.getAttribute("active-mix")}
