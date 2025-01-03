@@ -569,10 +569,19 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         true // this.openSidePanel === "reverb" for now, there is only this panel
           ? html`<master-reverb
             active-mix=${this.activeMix}
-            reverb-type=${this.params.reverbType}
-            reverb-time=${this.params.reverbTime}
-            reverb-output-mix=${this.params.reverbOutputMix}
-            reverb-volume=${
+            type=${this.params.reverbType}
+            time=${this.params.reverbTime}
+            output-mix=${this.params.reverbOutputMix}
+            diffusion=${this.params.reverbDiffusion}
+            initial-delay=${this.params.reverbInitialDelay}
+            hpf=${this.params.reverbHPF}
+            lpf=${this.params.reverbLPF}
+            room-size=${this.params.reverbRoomSize}
+            high-ratio=${this.params.reverbHighRatio}
+            low-ratio=${this.params.reverbLowRatio}
+            decay=${this.params.reverbDecay}
+            low-freq=${this.params.reverbLowFreq}
+            volume=${
               this.activeMix === 0
                 ? this.params.mix1ReverbVolume
                 : this.params.mix2ReverbVolume

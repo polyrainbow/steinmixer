@@ -9,12 +9,12 @@ customElements.define("master-reverb", class extends HTMLElement {
 
   static observedAttributes = [
     "active-mix",
-    "reverb-volume",
-    "reverb-output-mix",
+    "volume",
+    "output-mix",
   ];
 
   attributeChangedCallback(name, oldValue, newValue) {
-    if (["active-mix", "reverb-volume", "reverb-output-mix"].includes(name)) {
+    if (["active-mix", "volume", "output-mix"].includes(name)) {
       this.render();
     }
   }
@@ -35,7 +35,7 @@ customElements.define("master-reverb", class extends HTMLElement {
             const value = e.target.value;
             updateParamValue("ReverbOutputMix", parseInt(value));
           }}
-          .value=${live(this.getAttribute("reverb-output-mix"))}
+          .value=${live(this.getAttribute("output-mix"))}
         >
           <option value="0">Mix 1</option>
           <option value="1">Mix 2</option>
@@ -56,7 +56,7 @@ customElements.define("master-reverb", class extends HTMLElement {
               parseInt(value),
             );
           }}
-          .value=${live(this.getAttribute("reverb-volume"))}
+          .value=${live(this.getAttribute("volume"))}
         >
       </label>
       <label>
@@ -66,7 +66,7 @@ customElements.define("master-reverb", class extends HTMLElement {
             const value = e.target.value;
             updateParamValue("ReverbType", parseInt(value));
           }}
-          .value=${live(this.getAttribute("reverb-type"))}
+          .value=${live(this.getAttribute("type"))}
         >
           <option value="0">Hall</option>
           <option value="1">Room</option>
@@ -84,7 +84,7 @@ customElements.define("master-reverb", class extends HTMLElement {
             const value = e.target.value;
             updateParamValue("ReverbTime", parseInt(value));
           }}
-          .value=${live(this.getAttribute("reverb-time"))}
+          .value=${live(this.getAttribute("time"))}
         >
       </label>
       <label>
@@ -98,6 +98,7 @@ customElements.define("master-reverb", class extends HTMLElement {
             const value = e.target.value;
             updateParamValue("ReverbInitialDelay", parseInt(value));
           }}
+          .value=${live(this.getAttribute("initial-delay"))}
         >
       </label>
       <label>
@@ -111,6 +112,7 @@ customElements.define("master-reverb", class extends HTMLElement {
             const value = e.target.value;
             updateParamValue("ReverbDecay", parseInt(value));
           }}
+          .value=${live(this.getAttribute("decay"))}
         >
       </label>
       <label>
@@ -124,6 +126,7 @@ customElements.define("master-reverb", class extends HTMLElement {
             const value = e.target.value;
             updateParamValue("ReverbRoomSize", parseInt(value));
           }}
+          .value=${live(this.getAttribute("room-size"))}
         >
       </label>
       <label>
@@ -137,6 +140,7 @@ customElements.define("master-reverb", class extends HTMLElement {
             const value = e.target.value;
             updateParamValue("ReverbDiffusion", parseInt(value));
           }}
+          .value=${live(this.getAttribute("diffusion"))}
         >
       </label>
       <label>
@@ -150,6 +154,7 @@ customElements.define("master-reverb", class extends HTMLElement {
             const value = e.target.value;
             updateParamValue("ReverbHPF", parseInt(value));
           }}
+          .value=${live(this.getAttribute("hpf"))}
         >
       </label>
       <label>
@@ -163,6 +168,7 @@ customElements.define("master-reverb", class extends HTMLElement {
             const value = e.target.value;
             updateParamValue("ReverbLPF", parseInt(value));
           }}
+          .value=${live(this.getAttribute("lpf"))}
         >
       </label>
       <label>
@@ -176,6 +182,7 @@ customElements.define("master-reverb", class extends HTMLElement {
             const value = e.target.value;
             updateParamValue("ReverbHiRatio", parseInt(value));
           }}
+          .value=${live(this.getAttribute("high-ratio"))}
         >
       </label>
       <label>
@@ -189,6 +196,7 @@ customElements.define("master-reverb", class extends HTMLElement {
             const value = e.target.value;
             updateParamValue("ReverbLowRatio", parseInt(value));
           }}
+          .value=${live(this.getAttribute("low-ratio"))}
         >
       </label>
       <label>
@@ -202,6 +210,7 @@ customElements.define("master-reverb", class extends HTMLElement {
             const value = e.target.value;
             updateParamValue("ReverbLowFreq", parseInt(value));
           }}
+          .value=${live(this.getAttribute("low-freq"))}
         >
       </label>
     </section>

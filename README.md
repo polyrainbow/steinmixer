@@ -4,6 +4,12 @@ A website to control the Steinberg UR44 audio interface.
 
 ![Screenshot of Steinmixer](./img/steinmixer.png)
 
+# How to use?
+
+Make sure your interface is connected and visit
+https://polyrainbow.github.io/steinmixer/web/
+with a web browser that supports Web MIDI, for example Google Chrome or Microsoft Edge.
+
 # Why?
 
 Steinberg audio interfaces come with an application called "dspMixFX" that is
@@ -28,11 +34,17 @@ models to test with. However, it should be straight-forward to adapt this tool.
 - Highpass filter on inputs
 - Phase inversion on inputs
 - Stereo linking of channels
+- Reverb
 
 ❌ What is not (yet) possible:
 
-- Reverb
-- Insert effects (compressor, EQ)
+- Channel strip effects (compressor, EQ)
+
+✨ Advantages of Steinmixer over the original:
+
+- operating system-agnostic
+- no software or driver installation required
+- More accessible due to web technologies (e.g. keyboard navigation)
 
 # Deploy & Develop
 
