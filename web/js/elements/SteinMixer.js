@@ -1,16 +1,7 @@
-import {
-  init as initUR44,
-  selectActiveMix,
-  updateParamValue,
-} from "../UR44/index.js";
+import UR44Simulator from "../devices/UR44Simulator.js";
 import "./StereoInput.js";
 import { html, render, live } from "../lit.js";
-import {
-  getChannelIndexFromChannelId,
-  INPUT_CHANNEL_IDS,
-} from "../UR44/utils.js";
-
-const DEBUG_MODE = false;
+import UR44 from "../devices/UR44.js";
 
 customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
   constructor() {
@@ -21,73 +12,59 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
   params;
   openSidePanel = null;
   activeMix = 0;
+  device;
 
   async connectedCallback() {
     this.render();
 
+    // TODO: Move logic to UR lib?
     const messageHandler = (message) => {
       if (message.type === "change-parameter") {
         if (message.param === 40) {
           if (message.channel === 0) {
-            this.params.phantomPower0 = message.value;
+            this.params.PhantomPower01 = message.value;
           } else if (message.channel === 1) {
-            this.params.phantomPower1 = message.value;
+            this.params.PhantomPower23 = message.value;
           }
         }
         this.render();
       }
     };
 
-    if (DEBUG_MODE) {
-      this.status = "ready";
-      this.params = {};
-      this.render();
-      return;
-    }
-
     try {
-      this.params = await initUR44(messageHandler);
+      this.device = new UR44();
+      const params = await this.device.open(messageHandler);
+      this.params = params; console.log(params)
       this.status = "ready";
       this.render();
 
       Array.from(document.querySelectorAll("stereo-input"))
         .forEach(si => {
           si.addEventListener("link-channels", (e) => {
-            const paramKey = `input${
-              getChannelIndexFromChannelId(e.detail.channelIdL)
-            }Linked`;
+            const channelIndex = this.device.getChannelIndexFromChannelId(
+              e.detail.channelIdL,
+            );
             const newValue = e.detail.linked;
-            this.params[paramKey] = newValue;
-            updateParamValue("InputLink", newValue, e.detail.channelIdL);
+            this.device.updateParamValue(`Input${channelIndex}Link`, newValue);
           });
         });
 
       Array.from(document.querySelectorAll("volume-slider"))
         .forEach(vs => {
           vs.addEventListener("volume", (e) => {
+            let paramKey;
+            const mix = parseInt(e.detail.mix);
+
             if (e.detail.channelId === "daw") {
-              const paramKey = `mix${
-                parseInt(e.detail.mix) + 1
-              }DawVolume`;
-              this.params[paramKey] = e.detail.volume;
-              updateParamValue(
-                `DAWMix${parseInt(e.detail.mix) + 1}Volume`,
-                e.detail.volume,
-              );
+              paramKey = `Mix${mix}DAWVolume`;
             } else if (e.detail.channelId === "master") {
-              const paramKey = `mix${
-                parseInt(e.detail.mix) + 1
-              }MainVolume`;
-              this.params[paramKey] = e.detail.volume;
-              updateParamValue(
-                `MainMix${parseInt(e.detail.mix) + 1}Volume`,
-                e.detail.volume,
-              );
+              paramKey = `Mix${mix}MainVolume`;
             } else {
               const originalChannelId = e.detail.channelId;
-              const originalChannelIndex = getChannelIndexFromChannelId(
-                originalChannelId,
-              );
+              const originalChannelIndex
+                = this.device.getChannelIndexFromChannelId(
+                  originalChannelId,
+                );
               let actualChannelIndex;
 
               // when two channels are linked and user moves the right slider,
@@ -95,101 +72,63 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
               // let's adjust the channelIndex if needed.
               if (
                 originalChannelIndex === 1
-                && this.params.input0Linked === 1
+                && this.params.Input0Link === 1
               ) {
                 actualChannelIndex = 0;
               } else if (
                 originalChannelIndex === 3
-                && this.params.input2Linked === 1
+                && this.params.Input2Link === 1
               ) {
                 actualChannelIndex = 2;
               } else if (
                 originalChannelIndex === 5
-                && this.params.input4Linked
+                && this.params.Input4Link === 1
               ) {
                 actualChannelIndex = 4;
               } else {
                 actualChannelIndex = originalChannelIndex;
               }
 
-              const channelId = INPUT_CHANNEL_IDS[actualChannelIndex];
-
-              const paramKey = `mix${
-                parseInt(e.detail.mix) + 1
-              }Input${actualChannelIndex}Volume`;
-              this.params[paramKey] = e.detail.volume;
-              updateParamValue(
-                `InputMix${parseInt(e.detail.mix) + 1}Volume`,
-                e.detail.volume,
-                channelId,
-              );
+              paramKey = `Mix${mix}Input${actualChannelIndex}Volume`;
             }
+            this.device.updateParamValue(paramKey, e.detail.volume);
             this.render();
           });
 
           vs.addEventListener("mute", (e) => {
-            if (e.detail.channelId === "daw") {
-              const paramKey = `mix${
-                parseInt(e.detail.mix) + 1
-              }DawMute`;
-              this.params[paramKey] = e.detail.muted ? 0 : 1;
-              updateParamValue(
-                `DAWMix${parseInt(e.detail.mix) + 1}Mute`,
-                e.detail.muted ? 0 : 1,
-              );
-            } else if (e.detail.channelId === "master") {
-              const paramKey = `mix${
-                parseInt(e.detail.mix) + 1
-              }MainMute`;
-              this.params[paramKey] = e.detail.muted ? 0 : 1;
-              updateParamValue(
-                `MainMix${parseInt(e.detail.mix) + 1}Mute`,
-                e.detail.muted ? 0 : 1,
-              );
+            const mix = parseInt(e.detail.mix);
+            const channelId = e.detail.channelId;
+            const value = e.detail.muted ? 0 : 1;
+            let paramKey;
+
+            if (channelId === "daw") {
+              paramKey = `Mix${mix}DAWMute`;
+            } else if (channelId === "master") {
+              paramKey = `Mix${mix}MainMute`;
             } else {
-              const paramKey = `mix${
-                parseInt(e.detail.mix) + 1
-              }Input${getChannelIndexFromChannelId(e.detail.channelId)}Mute`;
-              this.params[paramKey] = e.detail.muted ? 0 : 1;
-              updateParamValue(
-                `InputMix${parseInt(e.detail.mix) + 1}Mute`,
-                e.detail.muted ? 0 : 1,
-                e.detail.channelId,
-              );
+              paramKey = `Mix${mix}Input${
+                this.device.getChannelIndexFromChannelId(channelId)
+              }Mute`;
             }
+            this.device.updateParamValue(paramKey, value);
             this.render();
           });
 
           vs.addEventListener("solo", (e) => {
+            const mix = parseInt(e.detail.mix);
+            const value = e.detail.soloed ? 1 : 0;
+            let paramKey;
+
             if (e.detail.channelId === "daw") {
-              const paramKey = `mix${
-                parseInt(e.detail.mix) + 1
-              }DawSolo`;
-              this.params[paramKey] = e.detail.soloed ? 1 : 0;
-              updateParamValue(
-                `DAWMix${parseInt(e.detail.mix) + 1}Solo`,
-                e.detail.soloed ? 1 : 0,
-              );
+              paramKey = `Mix${mix}DAWSolo`;
             } else if (e.detail.channelId === "master") {
-              const paramKey = `mix${
-                parseInt(e.detail.mix) + 1
-              }MasterSolo`;
-              this.params[paramKey] = e.detail.soloed ? 1 : 0;
-              updateParamValue(
-                `MainMix${parseInt(e.detail.mix) + 1}Solo`,
-                e.detail.soloed ? 1 : 0,
-              );
+              paramKey = `Mix${mix}MainSolo`;
             } else {
-              const paramKey = `mix${
-                parseInt(e.detail.mix) + 1
-              }Input${getChannelIndexFromChannelId(e.detail.channelId)}Solo`;
-              this.params[paramKey] = e.detail.soloed ? 1 : 0;
-              updateParamValue(
-                `InputMix${parseInt(e.detail.mix) + 1}Solo`,
-                e.detail.soloed ? 1 : 0,
-                e.detail.channelId,
-              );
+              paramKey = `Mix${mix}Input${
+                this.device.getChannelIndexFromChannelId(e.detail.channelId)
+              }Solo`;
             }
+            this.device.updateParamValue(paramKey, value);
             this.render();
           });
         });
@@ -197,53 +136,32 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       Array.from(document.querySelectorAll("pan-slider"))
         .forEach(ps => {
           ps.addEventListener("pan", (e) => {
-            if (e.detail.channelId === "daw") {
-              const paramKey = `mix${
-                parseInt(e.detail.mix) + 1
-              }DawPan`;
-              this.params[paramKey] = e.detail.pan;
-              console.log(paramKey, this.params[paramKey], e.detail.pan);
-              updateParamValue(
-                `DAWMix${parseInt(e.detail.mix) + 1}Pan`,
-                e.detail.pan,
-              );
-            } else if (e.detail.channelId === "master") {
-              const paramKey = `mix${
-                parseInt(e.detail.mix) + 1
-              }MainPan`;
-              this.params[paramKey] = e.detail.pan;
-              updateParamValue(
-                `MainMix${parseInt(e.detail.mix) + 1}Pan`,
-                e.detail.pan,
-              );
+            const { channelId, pan } = e.detail;
+            const mix = parseInt(e.detail.mix);
+            let paramKey;
+
+            if (channelId === "daw") {
+              paramKey = `Mix${mix}DAWPan`;
+            } else if (channelId === "master") {
+              paramKey = `Mix${mix}MainPan`;
             } else {
-              const paramKey = `mix${
-                parseInt(e.detail.mix) + 1
-              }Input${getChannelIndexFromChannelId(e.detail.channelId)}Pan`;
-              this.params[paramKey] = e.detail.pan;
-              updateParamValue(
-                `InputMix${parseInt(e.detail.mix) + 1}Pan`,
-                e.detail.pan,
-                e.detail.channelId,
-              );
+              paramKey = `Mix${mix}Input${
+                this.device.getChannelIndexFromChannelId(channelId)
+              }Pan`;
             }
+            this.device.updateParamValue(paramKey, pan);
             this.render();
           });
         });
 
-        Array.from(document.querySelectorAll("send-slider"))
+      Array.from(document.querySelectorAll("send-slider"))
         .forEach(ps => {
           ps.addEventListener("send", (e) => {
             const paramKey
-              = `input${
-                getChannelIndexFromChannelId(e.detail.channelId)
+              = `Input${
+                this.device.getChannelIndexFromChannelId(e.detail.channelId)
               }ReverbSend`;
-            this.params[paramKey] = e.detail.send;
-            updateParamValue(
-              "InputReverbSend",
-              e.detail.send,
-              e.detail.channelId,
-            );
+            this.device.updateParamValue(paramKey, e.detail.send);
             this.render();
           });
         });
@@ -252,51 +170,34 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         .forEach(fxSection => {
           fxSection.addEventListener("toggle-hpf", (e) => {
             const paramKey
-              = `input${
-                getChannelIndexFromChannelId(e.detail.channelId)
-              }HpfEnabled`;
-            this.params[paramKey] = Math.abs(1 - this.params[paramKey]);
-
-            if (isNaN(this.params[paramKey])) {
-              this.params[paramKey] = 1;
-            }
-
-            updateParamValue(
-              "InputHPF",
-              this.params[paramKey],
-              e.detail.channelId,
-            );
+              = `Input${
+                this.device.getChannelIndexFromChannelId(e.detail.channelId)
+              }HPFEnabled`;
+            const newValue = Math.abs(1 - this.params[paramKey]);
+            this.device.updateParamValue(paramKey, newValue);
             this.render();
           });
 
           fxSection.addEventListener("toggle-invert-phase", (e) => {
             const paramKey
-              = `input${
-                getChannelIndexFromChannelId(e.detail.channelId)
-              }InvertPhaseEnabled`;
-            this.params[paramKey] = Math.abs(1 - this.params[paramKey]);
-
-            if (isNaN(this.params[paramKey])) {
-              this.params[paramKey] = 1;
-            }
-
-            updateParamValue(
-              "InputInvertPhase",
-              this.params[paramKey],
-              e.detail.channelId,
-            );
+              = `Input${
+                this.device.getChannelIndexFromChannelId(e.detail.channelId)
+              }InvertPhase`;
+            const newValue = Math.abs(1 - this.params[paramKey]);
+            this.device.updateParamValue(paramKey, newValue);
             this.render();
           });
         });
     } catch (e) {
       if (
-        e.message === "Could not find MIDI input interface of audio interface"
+        e.message === "DEVICE_NOT_FOUND"
       ) {
         this.status = "no-interface";
         this.render();
       } else {
         this.status = "unknown-error";
         console.error(e);
+        this.render();
       }
     }
   }
@@ -323,272 +224,149 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       return;
     }
 
+    const mix = this.activeMix;
+    const params = this.params;
+
     const template = html`
     <h1>Steinmixer</h1>
     <div class="mixer-container">
       <div class="mix-select">
         <button
-          class=${this.activeMix === 0 ? "active" : ""}
+          class=${mix === 0 ? "active" : ""}
           @click=${() => {
-            selectActiveMix(0);
+            this.device.selectActiveMix(0);
             this.activeMix = 0;
             this.render();
           }}
         >Mix 1</button>
         <button
-          class=${this.activeMix === 1 ? "active" : ""}
+          class=${mix === 1 ? "active" : ""}
           @click=${() => {
-            selectActiveMix(1);
+            this.device.selectActiveMix(1);
             this.activeMix = 1;
             this.render();
           }}
         >Mix 2</button>
       </div>
       <stereo-input
-        link-inputs=${this.params.input0Linked}
+        .device=${this.device}
+        link-inputs=${params.Input0Link}
         title-l="Analog 1"
         title-r="Analog 2"
         channel-id-l="analog1"
         channel-id-r="analog2"
-        volume-l=${
-          this.activeMix === 0
-            ? this.params.mix1Input0Volume
-            : this.params.mix2Input0Volume
-        }
-        volume-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input1Volume
-            : this.params.mix2Input1Volume
-        }
+        volume-l=${params[`Mix${mix}Input0Volume`]}
+        volume-r=${params[`Mix${mix}Input1Volume`]}
         phantom-power-available="true"
-        phantom-power-enabled="${this.params.phantomPower0}"
+        phantom-power-enabled="${params.PhantomPower01}"
         active-mix=${this.activeMix}
-        pan-l=${
-          this.activeMix === 0
-            ? this.params.mix1Input0Pan
-            : this.params.mix2Input0Pan
-        }
-        pan-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input1Pan
-            : this.params.mix2Input1Pan
-          }
-        mute-l=${
-          this.activeMix === 0
-            ? this.params.mix1Input0Mute
-            : this.params.mix2Input0Mute
-          }
-        mute-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input1Mute
-            : this.params.mix2Input1Mute
-          }
-        solo-l=${
-          this.activeMix === 0
-            ? this.params.mix1Input0Solo
-            : this.params.mix2Input0Solo
-          }
-        solo-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input1Solo
-            : this.params.mix2Input1Solo
-          }
+        pan-l=${params[`Mix${mix}Input0Pan`]}
+        pan-r=${params[`Mix${mix}Input1Pan`]}
+        mute-l=${params[`Mix${mix}Input0Mute`]}
+        mute-r=${params[`Mix${mix}Input1Mute`]}
+        solo-l=${params[`Mix${mix}Input0Solo`]}
+        solo-r=${params[`Mix${mix}Input1Solo`]}
         hpf-available="true"
-        hpf-l-enabled=${this.params.input0HpfEnabled}
-        hpf-r-enabled=${this.params.input1HpfEnabled}
-        invert-phase-l-enabled=${this.params.input0InvertPhaseEnabled}
-        invert-phase-r-enabled=${this.params.input1InvertPhaseEnabled}
-        reverb-send-l=${this.params.input0ReverbSend}
-        reverb-send-r=${this.params.input1ReverbSend}
+        hpf-l-enabled=${params.Input0HPFEnabled}
+        hpf-r-enabled=${params.Input1HPFEnabled}
+        invert-phase-l-enabled=${params.Input0InvertPhase}
+        invert-phase-r-enabled=${params.Input1InvertPhase}
+        reverb-send-l=${params.Input0ReverbSend}
+        reverb-send-r=${params.Input1ReverbSend}
       ></stereo-input>
       <stereo-input
-        link-inputs=${this.params.input2Linked}
+        .device=${this.device}
+        link-inputs=${params.Input2Link}
         title-l="Analog 3"
         title-r="Analog 4"
         channel-id-l="analog3"
         channel-id-r="analog4"
-        volume-l=${
-          this.activeMix === 0
-            ? this.params.mix1Input2Volume
-            : this.params.mix2Input2Volume
-          }
-        volume-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input3Volume
-            : this.params.mix2Input3Volume
-          }
+        volume-l=${params[`Mix${mix}Input2Volume`]}
+        volume-r=${params[`Mix${mix}Input3Volume`]}
         phantom-power-available="true"
-        phantom-power-enabled="${this.params.phantomPower1}"
+        phantom-power-enabled="${params.PhantomPower23}"
         active-mix=${this.activeMix}
-        pan-l=${
-          this.activeMix === 0
-            ? this.params.mix1Input2Pan
-            : this.params.mix2Input2Pan
-          }
-        pan-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input3Pan
-            : this.params.mix2Input3Pan
-          }
-        mute-l=${
-          this.activeMix === 0
-            ? this.params.mix1Input2Mute
-            : this.params.mix2Input2Mute
-          }
-        mute-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input3Mute
-            : this.params.mix2Input3Mute
-          }
-        solo-l=${
-          this.activeMix === 0
-            ? this.params.mix1Input2Solo
-            : this.params.mix2Input2Solo
-          }
-        solo-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input3Solo
-            : this.params.mix2Input3Solo
-          }
+        pan-l=${params[`Mix${mix}Input2Pan`]}
+        pan-r=${params[`Mix${mix}Input3Pan`]}
+        mute-l=${params[`Mix${mix}Input2Mute`]}
+        mute-r=${params[`Mix${mix}Input3Mute`]}
+        solo-l=${params[`Mix${mix}Input2Solo`]}
+        solo-r=${params[`Mix${mix}Input3Solo`]}
         hpf-available="true"
-        hpf-l-enabled=${this.params.input2HpfEnabled}
-        hpf-r-enabled=${this.params.input3HpfEnabled}
-        invert-phase-l-enabled=${this.params.input2InvertPhaseEnabled}
-        invert-phase-r-enabled=${this.params.input3InvertPhaseEnabled}
-        reverb-send-l=${this.params.input2ReverbSend}
-        reverb-send-r=${this.params.input3ReverbSend}
+        hpf-l-enabled=${params.Input2HPFEnabled}
+        hpf-r-enabled=${params.Input3HPFEnabled}
+        invert-phase-l-enabled=${params.Input2InvertPhase}
+        invert-phase-r-enabled=${params.Input3InvertPhase}
+        reverb-send-l=${params.Input2ReverbSend}
+        reverb-send-r=${params.Input3ReverbSend}
       ></stereo-input>
       <stereo-input
-        link-inputs=${this.params.input4Linked}
+        .device=${this.device}
+        link-inputs=${params.Input4Link}
         title-l="Analog 5"
         title-r="Analog 6"
         channel-id-l="analog5"
         channel-id-r="analog6"
-        volume-l=${
-          this.activeMix === 0
-            ? this.params.mix1Input4Volume
-            : this.params.mix2Input4Volume
-        }
-        volume-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input5Volume
-            : this.params.mix2Input5Volume
-        }
+        volume-l=${params[`Mix${mix}Input4Volume`]}
+        volume-r=${params[`Mix${mix}Input5Volume`]}
         active-mix=${this.activeMix}
-        pan-l=${
-          this.activeMix === 0
-            ? this.params.mix1Input4Pan
-            : this.params.mix2Input4Pan
-        }
-        pan-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input5Pan
-            : this.params.mix2Input5Pan
-        }
-        mute-l=${
-          this.activeMix === 0
-            ? this.params.mix1Input4Mute
-            : this.params.mix2Input4Mute
-        }
-        mute-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input5Mute
-            : this.params.mix2Input5Mute
-        }
-        solo-l=${
-          this.activeMix === 0
-            ? this.params.mix1Input4Solo
-            : this.params.mix2Input4Solo
-        }
-        solo-r=${
-          this.activeMix === 0
-            ? this.params.mix1Input5Solo
-            : this.params.mix2Input5Solo
-        }
-        invert-phase-l-enabled=${this.params.input4InvertPhaseEnabled}
-        invert-phase-r-enabled=${this.params.input5InvertPhaseEnabled}
-        reverb-send-l=${this.params.input4ReverbSend}
-        reverb-send-r=${this.params.input5ReverbSend}
+        pan-l=${params[`Mix${mix}Input4Pan`]}
+        pan-r=${params[`Mix${mix}Input5Pan`]}
+        mute-l=${params[`Mix${mix}Input4Mute`]}
+        mute-r=${params[`Mix${mix}Input5Mute`]}
+        solo-l=${params[`Mix${mix}Input4Solo`]}
+        solo-r=${params[`Mix${mix}Input5Solo`]}
+        invert-phase-l-enabled=${params.Input4InvertPhase}
+        invert-phase-r-enabled=${params.Input5InvertPhase}
+        reverb-send-l=${params.Input4ReverbSend}
+        reverb-send-r=${params.Input5ReverbSend}
       ></stereo-input>
       <channel-strip
+        .device=${this.device}
         title="DAW"
         type="daw"
         channel-id="daw"
         subchannel-id-l="dawL"
         subchannel-id-r="dawR"
         active-mix=${this.activeMix}
-        volume=${
-          this.activeMix === 0
-            ? this.params.mix1DawVolume
-            : this.params.mix2DawVolume
-        }
-        pan=${
-          this.activeMix === 0
-            ? this.params.mix1DawPan
-            : this.params.mix2DawPan
-        }
-        mute=${
-          this.activeMix === 0
-            ? this.params.mix1DawMute
-            : this.params.mix2DawMute
-        }
-        solo=${
-          this.activeMix === 0
-            ? this.params.mix1DawSolo
-            : this.params.mix2DawSolo
-        }
+        volume=${params[`Mix${mix}DAWVolume`]}
+        pan=${params[`Mix${mix}DAWPan`]}
+        mute=${params[`Mix${mix}DAWMute`]}
+        solo=${params[`Mix${mix}DAWSolo`]}
       ></channel-strip>
       <channel-strip
+        .device=${this.device}
         type="master"
         title="Master"
         channel-id="master"
         subchannel-id-l="masterL"
         subchannel-id-r="masterR"
         active-mix=${this.activeMix}
-        volume=${
-          this.activeMix === 0
-            ? this.params.mix1MainVolume
-            : this.params.mix2MainVolume
-        }
-        pan=${
-          this.activeMix === 0
-            ? this.params.mix1MainPan
-            : this.params.mix2MainPan
-        }
-        mute=${
-          this.activeMix === 0
-            ? this.params.mix1MainMute
-            : this.params.mix2MainMute
-        }
+        volume=${params[`Mix${mix}MainVolume`]}
+        pan=${params[`Mix${mix}MainPan`]}
+        mute=${params[`Mix${mix}MainMute`]}
         @open-master-reverb=${() => {
           this.openSidePanel = "reverb";
           this.render();
         }}
       ></channel-strip>
-      ${
-        true // this.openSidePanel === "reverb" for now, there is only this panel
-          ? html`<master-reverb
-            active-mix=${this.activeMix}
-            type=${this.params.reverbType}
-            time=${this.params.reverbTime}
-            output-mix=${this.params.reverbOutputMix}
-            diffusion=${this.params.reverbDiffusion}
-            initial-delay=${this.params.reverbInitialDelay}
-            hpf=${this.params.reverbHPF}
-            lpf=${this.params.reverbLPF}
-            room-size=${this.params.reverbRoomSize}
-            high-ratio=${this.params.reverbHighRatio}
-            low-ratio=${this.params.reverbLowRatio}
-            decay=${this.params.reverbDecay}
-            low-freq=${this.params.reverbLowFreq}
-            volume=${
-              this.activeMix === 0
-                ? this.params.mix1ReverbVolume
-                : this.params.mix2ReverbVolume
-            }
-          ></master-reverb>`
-          : ""
-      }
+      <master-reverb
+        .device=${this.device}
+        active-mix=${this.activeMix}
+        type=${params.ReverbType}
+        time=${params.ReverbTime}
+        output-mix=${params.ReverbOutputMix}
+        diffusion=${params.ReverbDiffusion}
+        initial-delay=${params.ReverbInitialDelay}
+        hpf=${params.ReverbHPF}
+        lpf=${params.ReverbLPF}
+        room-size=${params.ReverbRoomSize}
+        high-ratio=${params.ReverbHighRatio}
+        low-ratio=${params.ReverbLowRatio}
+        decay=${params.ReverbDecay}
+        low-freq=${params.ReverbLowFreq}
+        volume=${params[`Mix${mix}ReverbVolume`]}
+      ></master-reverb>
     </div>
 
     <div class="settings">
@@ -598,10 +376,13 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         </label>
         <select id="phones-2-output-select"
           @change=${(e) => {
-            this.params.phones2Output = parseInt(e.target.value);
-            updateParamValue("Phones2Output", parseInt(e.target.value), 0);
+            this.params.Phones2Output = parseInt(e.target.value);
+            this.device.updateParamValue(
+              "Phones2Output",
+              parseInt(e.target.value),
+            );
           }}
-          .value=${live(this.params.phones2Output)}
+          .value=${live(params.Phones2Output)}
         >
           <option value="0">Mix 1</option>
           <option value="1">Mix 2</option>
@@ -613,9 +394,12 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         </label>
         <select id="input-56-level-select"
           @change=${(e) => {
-            updateParamValue("Input56Level", parseInt(e.target.value), 0);
+            this.device.updateParamValue(
+              "Input45Level",
+              parseInt(e.target.value),
+            );
           }}
-          .value=${live(this.params.input45Level)}
+          .value=${live(params.Input45Level)}
         >
           <option value="1">-10dBV</option>
           <option value="0">+4dBu</option>
@@ -629,15 +413,9 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
           id="hpf-level-select"
           @change=${(e) => {
             const value = parseInt(e.target.value);
-            updateParamValue("HPFSetting", value, 0);
-            updateParamValue("HPFSetting", value, 1);
-            updateParamValue("HPFSetting", value, 2);
-            updateParamValue("HPFSetting", value, 3);
-            updateParamValue("HPFSetting", value, 4);
-            updateParamValue("HPFSetting", value, 5);
-            this.params.hpfSetting = value;
+            this.device.updateParamValue("InputHPFSetting", value);
           }}
-          .value=${live(this.params.hpfSetting)}
+          .value=${live(params.InputHPFSetting)}
         >
           <option value="0">40 Hz</option>
           <option value="1">60 Hz</option>
@@ -650,9 +428,12 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         <label>
           <input
             type="checkbox"
-            .checked=${live(this.params.loopback === 1)}
+            .checked=${live(this.params.Loopback === 1)}
             @change=${(e) => {
-              updateParamValue("Loopback", e.target.checked ? 1 : 0, 0);
+              this.device.updateParamValue(
+                "Loopback",
+                e.target.checked ? 1 : 0,
+              );
             }}
           >
           Loopback of DAW signal to Inputs 1/2

@@ -1,5 +1,4 @@
 import { html, render, live } from "../lit.js";
-import { getDBFSFromSliderValue } from "../UR44/utils.js";
 import { getDBFSLabel } from "../utils.js";
 
 customElements.define("send-slider", class extends HTMLElement {
@@ -62,7 +61,9 @@ customElements.define("send-slider", class extends HTMLElement {
       @dblclick=${handleDblClick}
       title="Reverb send"
     >
-    <span>${getDBFSLabel(send)}</span>`;
+    <span>${
+      getDBFSLabel(send, val => this.device.getDBFSFromSliderValue(val))
+    }</span>`;
 
     render(template, this);
   }

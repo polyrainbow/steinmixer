@@ -28,6 +28,7 @@ customElements.define("fx-section", class extends HTMLElement {
 
     const template = html`
     <vu-meter
+      .device=${this.device}
       channel-id=${
         type !== "analog"
           ? this.getAttribute("subchannel-id-l")
@@ -37,6 +38,7 @@ customElements.define("fx-section", class extends HTMLElement {
     ${
       type !== "analog"
         ? html`<vu-meter
+          .device=${this.device}
           channel-id=${this.getAttribute("subchannel-id-r")}
         ></vu-meter>`
         : ""

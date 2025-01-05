@@ -43,6 +43,7 @@ customElements.define("channel-strip", class extends HTMLElement {
   render() {
     const template = html`
     <fx-section
+      .device=${this.device}
       type=${this.getAttribute("type")}
       channel-id=${this.getAttribute("channel-id")}
       subchannel-id-l=${this.getAttribute("subchannel-id-l")}
@@ -55,6 +56,7 @@ customElements.define("channel-strip", class extends HTMLElement {
     ${
       this.getAttribute("type") === "analog"
         ? html`<send-slider
+          .device=${this.device}
           send=${this.getAttribute("reverb-send")}
           channel-id=${this.getAttribute("channel-id")}
         ></send-slider>`
@@ -64,18 +66,20 @@ customElements.define("channel-strip", class extends HTMLElement {
             style="visibility: hidden"
             @click=${() => {
               this.dispatchEvent(
-                new Event("open-master-reverb", { bubbles: true })
-              )
+                new Event("open-master-reverb", { bubbles: true }),
+              );
             }}
           >Reverb<br>settings</button>`
           : html`<div class="daw-reverb-placeholder"></div>`
     }
     <pan-slider
+      .device=${this.device}
       channel-id=${this.getAttribute("channel-id")}
       active-mix=${this.getAttribute("active-mix")}
       pan=${this.getAttribute("pan")}
     ></pan-slider>
     <volume-slider
+      .device=${this.device}
       type=${this.getAttribute("type")}
       phantom-power-available=${
         this.getAttribute("phantom-power-available") === "true"

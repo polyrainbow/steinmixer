@@ -1,6 +1,4 @@
 import { html, render, live } from "../lit.js";
-import { updateParamValue } from "../UR44/index.js";
-import { getDBFSLabel } from "../utils.js";
 
 customElements.define("master-reverb", class extends HTMLElement {
   constructor() {
@@ -33,7 +31,7 @@ customElements.define("master-reverb", class extends HTMLElement {
         <select
           @change=${(e) => {
             const value = e.target.value;
-            updateParamValue("ReverbOutputMix", parseInt(value));
+            this.device.updateParamValue("ReverbOutputMix", parseInt(value));
           }}
           .value=${live(this.getAttribute("output-mix"))}
         >
@@ -50,9 +48,10 @@ customElements.define("master-reverb", class extends HTMLElement {
           step="1"
           @input=${(e) => {
             const value = e.target.value;
-            updateParamValue(
-              `ReverbMix${
-                parseInt(this.getAttribute("active-mix")) + 1}Volume`,
+            this.device.updateParamValue(
+              `Mix${
+                parseInt(this.getAttribute("active-mix"))
+              }ReverbVolume`,
               parseInt(value),
             );
           }}
@@ -64,7 +63,7 @@ customElements.define("master-reverb", class extends HTMLElement {
         <select
           @change=${(e) => {
             const value = e.target.value;
-            updateParamValue("ReverbType", parseInt(value));
+            this.device.updateParamValue("ReverbType", parseInt(value));
           }}
           .value=${live(this.getAttribute("type"))}
         >
@@ -82,7 +81,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           step="1"
           @input=${(e) => {
             const value = e.target.value;
-            updateParamValue("ReverbTime", parseInt(value));
+            this.device.updateParamValue("ReverbTime", parseInt(value));
           }}
           .value=${live(this.getAttribute("time"))}
         >
@@ -96,7 +95,10 @@ customElements.define("master-reverb", class extends HTMLElement {
           step="1"
           @input=${(e) => {
             const value = e.target.value;
-            updateParamValue("ReverbInitialDelay", parseInt(value));
+            this.device.updateParamValue(
+              "ReverbInitialDelay",
+              parseInt(value),
+            );
           }}
           .value=${live(this.getAttribute("initial-delay"))}
         >
@@ -110,7 +112,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           step="1"
           @input=${(e) => {
             const value = e.target.value;
-            updateParamValue("ReverbDecay", parseInt(value));
+            this.device.updateParamValue("ReverbDecay", parseInt(value));
           }}
           .value=${live(this.getAttribute("decay"))}
         >
@@ -124,7 +126,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           step="1"
           @input=${(e) => {
             const value = e.target.value;
-            updateParamValue("ReverbRoomSize", parseInt(value));
+            this.device.updateParamValue("ReverbRoomSize", parseInt(value));
           }}
           .value=${live(this.getAttribute("room-size"))}
         >
@@ -138,7 +140,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           step="1"
           @input=${(e) => {
             const value = e.target.value;
-            updateParamValue("ReverbDiffusion", parseInt(value));
+            this.device.updateParamValue("ReverbDiffusion", parseInt(value));
           }}
           .value=${live(this.getAttribute("diffusion"))}
         >
@@ -152,7 +154,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           step="1"
           @input=${(e) => {
             const value = e.target.value;
-            updateParamValue("ReverbHPF", parseInt(value));
+            this.device.updateParamValue("ReverbHPF", parseInt(value));
           }}
           .value=${live(this.getAttribute("hpf"))}
         >
@@ -166,7 +168,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           step="1"
           @input=${(e) => {
             const value = e.target.value;
-            updateParamValue("ReverbLPF", parseInt(value));
+            this.device.updateParamValue("ReverbLPF", parseInt(value));
           }}
           .value=${live(this.getAttribute("lpf"))}
         >
@@ -180,7 +182,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           step="1"
           @input=${(e) => {
             const value = e.target.value;
-            updateParamValue("ReverbHiRatio", parseInt(value));
+            this.device.updateParamValue("ReverbHighRatio", parseInt(value));
           }}
           .value=${live(this.getAttribute("high-ratio"))}
         >
@@ -194,7 +196,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           step="1"
           @input=${(e) => {
             const value = e.target.value;
-            updateParamValue("ReverbLowRatio", parseInt(value));
+            this.device.updateParamValue("ReverbLowRatio", parseInt(value));
           }}
           .value=${live(this.getAttribute("low-ratio"))}
         >
@@ -208,7 +210,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           step="1"
           @input=${(e) => {
             const value = e.target.value;
-            updateParamValue("ReverbLowFreq", parseInt(value));
+            this.device.updateParamValue("ReverbLowFreq", parseInt(value));
           }}
           .value=${live(this.getAttribute("low-freq"))}
         >

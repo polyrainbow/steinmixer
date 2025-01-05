@@ -1,4 +1,3 @@
-import { getDBFSFromSliderValue } from "../UR44/utils.js";
 import { html, render, live } from "../lit.js";
 import { getDBFSLabel } from "../utils.js";
 
@@ -68,7 +67,7 @@ customElements.define("volume-slider", class extends HTMLElement {
     };
 
     const handleInput = (e) => {
-      const newVolume = e.target.value;
+      const newVolume = parseInt(e.target.value);
 
       this.dispatchEvent(new CustomEvent("volume", {
         detail: {
@@ -131,7 +130,9 @@ customElements.define("volume-slider", class extends HTMLElement {
       @input=${handleInput}
       @dblclick=${handleDblClick}
     >
-    <span class="volume-level">${getDBFSLabel(volume)}</span>`;
+    <span class="volume-level">${
+      getDBFSLabel(volume, val => this.device.getDBFSFromSliderValue(val))
+    }</span>`;
 
     render(template, this);
   }

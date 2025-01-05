@@ -96,6 +96,7 @@ customElements.define("stereo-input", class extends HTMLElement {
     </div>
     <div class="strips-container">
       <channel-strip
+        .device=${this.device}
         type="analog"
         channel-id=${this.getAttribute("channel-id-l")}
         title="${this.getAttribute("title-l")}"
@@ -114,6 +115,7 @@ customElements.define("stereo-input", class extends HTMLElement {
         reverb-send="${this.getAttribute("reverb-send-l")}"
       ></channel-strip>
       <channel-strip
+        .device=${this.device}
         type="analog"
         channel-id=${this.getAttribute("channel-id-r")}
         title="${this.getAttribute("title-r")}"

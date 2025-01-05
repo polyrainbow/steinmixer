@@ -1,6 +1,4 @@
-import { getDBFSFromSliderValue } from "./UR44/utils.js";
-
-export const getDBFSLabel = (val) => {
+export const getDBFSLabel = (val, valueTransformer) => {
   const formatter = new Intl.NumberFormat(
     "en-US",
     {
@@ -8,5 +6,5 @@ export const getDBFSLabel = (val) => {
       maximumFractionDigits: 2,
     },
   );
-  return `${formatter.format(getDBFSFromSliderValue(val))} dB`;
+  return `${formatter.format(valueTransformer(val))} dB`;
 };

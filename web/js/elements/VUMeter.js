@@ -1,5 +1,3 @@
-import { getVuValues } from "../UR44/index.js";
-
 class VUMeter extends HTMLElement {
   constructor() {
     super();
@@ -11,7 +9,7 @@ class VUMeter extends HTMLElement {
 
   refreshValues() {
     try {
-      const values = getVuValues(this.channelId);
+      const values = this.device.getVuValues(this.channelId);
       this.momentaryOverlay.style.height = (values.momentary / 1000) + "em";
       this.maxBar.style.bottom = (values.max / 1000) + "em";
     } catch (e) {
