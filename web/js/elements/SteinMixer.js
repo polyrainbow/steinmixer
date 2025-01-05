@@ -345,7 +345,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         active-mix=${this.activeMix}
         type=${params.ReverbType}
         time=${params.ReverbTime}
-        output-mix=${params.ReverbOutputMix}
+        input-mix=${params.ReverbInputMix}
         diffusion=${params.ReverbDiffusion}
         initial-delay=${params.ReverbInitialDelay}
         hpf=${params.ReverbHPF}

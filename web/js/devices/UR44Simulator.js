@@ -96,7 +96,7 @@ const INIT_PARAMS = { // TODO: update param names
   Mix1MainPan: 0,
   Phones2Output: 0,
   Loopback: 0,
-  ReverbOutputMix: 0,
+  ReverbInputMix: 0,
   PhantomPower01: 1,
   PhantomPower23: 0,
   Input45Level: 0,

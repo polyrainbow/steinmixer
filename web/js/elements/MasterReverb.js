@@ -8,11 +8,11 @@ customElements.define("master-reverb", class extends HTMLElement {
   static observedAttributes = [
     "active-mix",
     "volume",
-    "output-mix",
+    "input-mix",
   ];
 
   attributeChangedCallback(name, oldValue, newValue) {
-    if (["active-mix", "volume", "output-mix"].includes(name)) {
+    if (["active-mix", "volume", "input-mix"].includes(name)) {
       this.render();
     }
   }
@@ -27,13 +27,16 @@ customElements.define("master-reverb", class extends HTMLElement {
       <h2>Reverb</h2>
       <section class="settings">
       <label>
-        Output Mix
+        Input Mix
+        <span class="description">
+          The sends of the selected mix will be fed into the reverb
+        </span>
         <select
           @change=${(e) => {
             const value = e.target.value;
-            this.device.updateParamValue("ReverbOutputMix", parseInt(value));
+            this.device.updateParamValue("ReverbInputMix", parseInt(value));
           }}
-          .value=${live(this.getAttribute("output-mix"))}
+          .value=${live(this.getAttribute("input-mix"))}
         >
           <option value="0">Mix 1</option>
           <option value="1">Mix 2</option>

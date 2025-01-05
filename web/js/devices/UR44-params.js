@@ -118,7 +118,7 @@ ReverbLowFreq,76,null,1,59,32,3399,false,1:22Hz; 32:800Hz; 59:18kHz
 Mix0ReverbVolume,79,null,0,127,103,3402,false,0:-∞; 1:-74dB; 103:0dB; 127:+6dB
 Mix1ReverbVolume,80,null,0,127,103,3403,false,0:-∞; 1:-74dB; 103:0dB; 127:+6dB
 
-ReverbOutputMix,37,null,0,1,0,3500,false,0:mix1; 1:mix2
+ReverbInputMix,37,null,0,1,0,3500,false,0:mix1; 1:mix2
 
 PhantomPower01,null,null,0,1,null,3504,true,0:off; 1:on
 PhantomPower23,null,null,0,1,null,3505,true,0:off; 1:on

@@ -317,10 +317,17 @@
 
       input, select {
         display: block;
+        width: 10rem;
       }
 
-      select {
-        width: 100%;
+      & > * {
+        max-width: 10em;
+      }
+
+      .description {
+        display: block;
+        font-size: small;
+        word-break: break-word;
       }
     }
   }
