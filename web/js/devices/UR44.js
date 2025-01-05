@@ -108,8 +108,27 @@ export default class UR44 {
         resolve(this.settings);
       } else if (messageParsed.type === "meter-update") {
         this.vuValues = messageParsed.values;
-      } else {
-        messageHandler?.(messageParsed);
+      } else if (messageParsed.type === "change-parameter") {
+        if (messageParsed.param === 40) {
+          if (messageParsed.channel === 0) {
+            this.settings.PhantomPower01 = messageParsed.value;
+            messageHandler?.({
+              type: "change-parameter",
+              paramName: "PhantomPower01",
+              newValue: messageParsed.value,
+            });
+          } else if (messageParsed.channel === 1) {
+            this.settings.PhantomPower23 = messageParsed.value;
+            messageHandler?.({
+              type: "change-parameter",
+              paramName: "PhantomPower23",
+              newValue: messageParsed.value,
+            });
+          }
+        } else {
+          console.warn("Unknown parameter changed message received");
+          console.warn(messageParsed);
+        }
       }
     };
 

@@ -17,24 +17,14 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
   async connectedCallback() {
     this.render();
 
-    // TODO: Move logic to UR lib?
-    const messageHandler = (message) => {
-      if (message.type === "change-parameter") {
-        if (message.param === 40) {
-          if (message.channel === 0) {
-            this.params.PhantomPower01 = message.value;
-          } else if (message.channel === 1) {
-            this.params.PhantomPower23 = message.value;
-          }
-        }
-        this.render();
-      }
+    const paramUpdateHandler = () => {
+      this.render();
     };
 
     try {
       this.device = new UR44();
-      const params = await this.device.open(messageHandler);
-      this.params = params; console.log(params)
+      const params = await this.device.open(paramUpdateHandler);
+      this.params = params;
       this.status = "ready";
       this.render();
 
