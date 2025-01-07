@@ -1,3 +1,8 @@
+const getHeightPercentage = (val) => {
+  // 8190 is the max absolute value for a 0dBFS square wave
+  return val / 8190 * 100;
+};
+
 class VUMeter extends HTMLElement {
   constructor() {
     super();
@@ -9,9 +14,9 @@ class VUMeter extends HTMLElement {
 
   refreshValues() {
     try {
-      const values = this.device.getVuValues(this.channelId);
-      this.momentaryOverlay.style.height = (values.momentary / 1000) + "em";
-      this.maxBar.style.bottom = (values.max / 1000) + "em";
+      const { momentary, max } = this.device.getVuValues(this.channelId);
+      this.momentaryOverlay.style.height = `${getHeightPercentage(momentary)}%`;
+      this.maxBar.style.bottom = `${getHeightPercentage(max)}%`;
     } catch (e) {
       /* In case we haven´t received values yet, do nothing. */
     } finally {
