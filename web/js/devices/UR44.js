@@ -105,7 +105,10 @@ export default class UR44 {
             return true;
           },
         });
-        resolve(this.settings);
+        resolve({
+          params: this.settings,
+          connectionName: this.#midiOutput.name,
+        });
       } else if (messageParsed.type === "meter-update") {
         this.vuValues = messageParsed.values;
       } else if (messageParsed.type === "change-parameter") {

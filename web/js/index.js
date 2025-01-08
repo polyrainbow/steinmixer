@@ -1,3 +1,4 @@
+import "./elements/AppHeader.js";
 import "./elements/VolumeSlider.js";
 import "./elements/PanSlider.js";
 import "./elements/SendSlider.js";

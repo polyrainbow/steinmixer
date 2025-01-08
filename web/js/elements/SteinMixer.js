@@ -10,6 +10,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
 
   status = "loading";
   params;
+  connectionName;
   openSidePanel = null;
   activeMix = 0;
   device;
@@ -23,8 +24,11 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
 
     try {
       this.device = new UR44();
-      const params = await this.device.open(paramUpdateHandler);
+      const { params, connectionName } = await this.device.open(
+        paramUpdateHandler,
+      );
       this.params = params;
+      this.connectionName = connectionName;
       this.status = "ready";
       this.render();
 
@@ -203,7 +207,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       return;
     } else if (this.status === "no-interface") {
       const template
-        = html`<h1>Steinmixer</h1>
+        = html`<app-header></app-header>
         <p>Could not find audio interface. Make sure it is connected.
         <br>
         <button @click=${() => location.reload()}>
@@ -213,7 +217,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       return;
     } else if (this.status === "not-allowed") {
       const template
-        = html`<h1>Steinmixer</h1>
+        = html`<app-header></app-header>
         <p>
           This website is not allowed to access and control MIDI devices.
           Please enable access via the icon in your address bar.
@@ -235,7 +239,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
     const params = this.params;
 
     const template = html`
-    <h1>Steinmixer</h1>
+    <app-header connection-name=${this.connectionName}></app-header>
     <div class="mixer-container">
       <div class="mix-select">
         <button

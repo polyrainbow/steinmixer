@@ -37,6 +37,25 @@
 }
 
 @layer utilities {
+  app-header {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+
+    .badge {
+      background-color: crimson;
+      color: white;
+      border-radius: 0.5em;
+      padding: 0.3em;
+      font-size: small;
+      font-weight: bold;
+
+      &.connected {
+        background-color: #0067ff;
+      }
+    }
+  }
+
   stein-mixer div {
     display: flex;
     gap: 0.2em;

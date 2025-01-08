@@ -148,7 +148,10 @@ const vuValues = {
 export default class UR44Simulator {
   async open(messageHandler) {
     this.settings = INIT_PARAMS;
-    return this.settings;
+    return {
+      params: this.settings,
+      connectionName: "UR44 Simulator",
+    };
   }
 
   getVuValues(channelId) {
