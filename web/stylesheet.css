@@ -343,6 +343,15 @@
         max-width: 10em;
       }
 
+      & > div {
+        display: flex;
+        flex-direction: column;
+
+        span {
+          font-size: smaller;
+        }
+      }
+
       .description {
         display: block;
         font-size: small;

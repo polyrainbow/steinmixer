@@ -364,19 +364,6 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       <master-reverb
         .device=${this.device}
         active-mix=${this.activeMix}
-        type=${params.ReverbType}
-        time=${params.ReverbTime}
-        input-mix=${params.ReverbInputMix}
-        diffusion=${params.ReverbDiffusion}
-        initial-delay=${params.ReverbInitialDelay}
-        hpf=${params.ReverbHPF}
-        lpf=${params.ReverbLPF}
-        room-size=${params.ReverbRoomSize}
-        high-ratio=${params.ReverbHighRatio}
-        low-ratio=${params.ReverbLowRatio}
-        decay=${params.ReverbDecay}
-        low-freq=${params.ReverbLowFreq}
-        volume=${params[`Mix${mix}ReverbVolume`]}
       ></master-reverb>
     </div>
 
