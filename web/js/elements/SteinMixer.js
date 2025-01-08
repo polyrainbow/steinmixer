@@ -179,7 +179,10 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
           });
         });
     } catch (e) {
-      if (
+      if (e.name === "NotAllowedError") {
+        this.status = "not-allowed";
+        this.render();
+      } else if (
         e.message === "DEVICE_NOT_FOUND"
       ) {
         this.status = "no-interface";
@@ -202,6 +205,20 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       const template
         = html`<h1>Steinmixer</h1>
         <p>Could not find audio interface. Make sure it is connected.
+        <br>
+        <button @click=${() => location.reload()}>
+          Reload page to check again
+        </button>`;
+      render(template, this);
+      return;
+    } else if (this.status === "not-allowed") {
+      const template
+        = html`<h1>Steinmixer</h1>
+        <p>
+          This website is not allowed to access and control MIDI devices.
+          Please enable access via the icon in your address bar.
+        </p>
+        <img src="./img/allow-midi-access.png" width="300">
         <br>
         <button @click=${() => location.reload()}>
           Reload page to check again
