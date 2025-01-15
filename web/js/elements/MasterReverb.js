@@ -1,77 +1,187 @@
 import { html, render, live } from "../lit.js";
 import { getDBFSLabel } from "../utils.js";
 
-const REVERB_TIME_VALUES = [
-  0.520,
-  0.694,
-  0.867,
-  1.04,
-  1.21,
-  1.39,
-  1.56,
-  1.73,
-  1.91,
-  2.08,
-  2.25,
-  2.43,
-  2.60,
-  2.77,
-  2.95,
-  3.12,
-  3.30,
-  3.47,
-  3.64,
-  3.82,
-  3.99,
-  4.16,
-  4.34,
-  4.51,
-  4.68,
-  4.86,
-  5.03,
-  5.20,
-  5.38,
-  5.55,
-  5.72,
-  5.90,
-  6.07,
-  6.24,
-  6.42,
-  6.59,
-  6.76,
-  6.94,
-  7.11,
-  7.28,
-  7.46,
-  7.63,
-  7.80,
-  7.98,
-  8.15,
-  8.32,
-  8.50,
-  8.67,
-  9.54,
-  10.4,
-  11.3,
-  12.1,
-  13.0,
-  13.9,
+
+/*
+  The maximum reverb times in relation to room size:
+  If room size is 0, max time is 10.3s, if room size is 31, max time is 31s
+*/
+const HALL_MAX_REVERB_TIMES = [
+  10.3,
+  10.7,
+  11.1,
+  11.5,
+  11.9,
+  12.3,
+  12.8,
+  13.2,
+  13.7,
+  14.2,
   14.7,
-  15.6,
-  16.5,
-  17.3,
-  19.1,
-  20.8,
-  22.5,
-  24.3,
+  15.2,
+  15.8,
+  16.4,
+  17.0,
+  17.6,
+  18.2,
+  18.9,
+  19.6,
+  20.3,
+  21,
+  21.8,
+  22.6,
+  23.4,
+  24.2,
+  25.1,
+  26,
+  27,
+  27.9,
+  29,
+  30,
+  31,
+];
+
+
+const ROOM_MAX_REVERB_TIMES = [
+  15.2,
+  15.8,
+  16.4,
+  17.0,
+  17.6,
+  18.2,
+  18.9,
+  19.6,
+  20.3,
+  21.0,
+  21.8,
+  22.6,
+  23.4,
+  24.2,
+  25.1,
   26.0,
-  27.7,
-  29.5,
-  31.2,
-  32.9,
-  34.7,
-  43.3,
-  52.0,
+  27.0,
+  27.9,
+  29,
+  30,
+  31.0,
+  32.1,
+  33.3,
+  34.4,
+  35.6,
+  36.9,
+  38.2,
+  39.5,
+  40.9,
+  42.3,
+  43.8,
+  45.3,
+];
+
+
+const PLATE_MAX_REVERB_TIMES = [
+  17.6,
+  18.2,
+  18.9,
+  19.6,
+  20.3,
+  21.0,
+  21.8,
+  22.6,
+  23.4,
+  24.2,
+  25.1,
+  26,
+  27,
+  27.9,
+  29,
+  30,
+  31.0,
+  32.1,
+  33.3,
+  34.4,
+  35.6,
+  36.9,
+  38.2,
+  39.5,
+  40.9,
+  42.3,
+  43.8,
+  45.3,
+  46.9,
+  48.6,
+  50.3,
+  52,
+]
+
+/*
+  Reverb time range depends on room size and reverb type.
+  There are always 70 possible values which depend on the maximum value for the
+  combination of reverb type (hall, room, plate) and room size (0-31).
+  There are 5 key indexes where the values are given: 0, 47, 57, 67, 69
+  See also the graph in docs/reverb-time-range-example.png for a visualization.
+  Between the key indexes, the values are linearly interpolated.
+*/
+const getReverbTime = (MAX, x) => {
+  if (x < 0 || x > 69) {
+      throw new Error("x is out of range: " + x);
+  }
+
+  const MIN = MAX / 100;
+  const RANGE = MAX - MIN;
+  // between special indexes, we linearly interpolate
+  const KEY_INDEXES = [
+    [0, MIN],
+    [47, MIN + RANGE * 0.15832],
+    [57, MIN + RANGE * 0.325952],
+    [67, MIN + RANGE * 0.66395],
+    [69, MAX],
+  ];
+
+  if (x === 0) {
+    return KEY_INDEXES[0][1];
+  }
+
+  for (let i = 1; i < KEY_INDEXES.length; i++) {
+    const previousKeyIndex = KEY_INDEXES[i - 1][0];
+    const previousKeyValue = KEY_INDEXES[i - 1][1];
+
+    const keyIndexEntry = KEY_INDEXES[i];
+    const keyIndex = keyIndexEntry[0];
+    const keyIndexValue = keyIndexEntry[1];
+    if (x === keyIndex) {
+      return keyIndexValue;
+    } else if (x < keyIndex) {
+      // linear interpolation between last and current key index
+      const indexRange = keyIndex - previousKeyIndex;
+      const xInRange = x - previousKeyIndex;
+      const interpolationNormalized = xInRange / indexRange;
+      const valueRange = keyIndexValue - previousKeyValue;
+      const value = interpolationNormalized * valueRange + previousKeyValue;
+      return value;
+    } else {
+      continue;
+    }
+  }
+}
+
+const getReverbTimeFromRoomSize = (reverbType, roomSize, x) => {
+  let max;
+  if (reverbType === 0) {
+    max = HALL_MAX_REVERB_TIMES[roomSize];
+  } else if (reverbType === 1) {
+    max = ROOM_MAX_REVERB_TIMES[roomSize];
+  } else if (reverbType === 2) {
+    max = PLATE_MAX_REVERB_TIMES[roomSize];
+  } else {
+    throw new Error("Invalid reverb type: " + reverbType);
+  }
+
+  return getReverbTime(max, x);
+}
+
+
+const REVERB_INITIAL_DELAY_VALUES = [
+
 ];
 
 customElements.define("master-reverb", class extends HTMLElement {
@@ -149,6 +259,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           @change=${(e) => {
             const value = e.target.value;
             this.device.updateParamValue("ReverbType", parseInt(value));
+            this.render();
           }}
           .value=${live(settings.ReverbType)}
         >
@@ -173,7 +284,13 @@ customElements.define("master-reverb", class extends HTMLElement {
             .value=${live(this.device.settings.ReverbTime)}
           >
           <span>${
-            REVERB_TIME_VALUES[this.device.settings[`ReverbTime`]]
+            Math.round(
+              getReverbTimeFromRoomSize(
+                this.device.settings.ReverbType,
+                this.device.settings.ReverbRoomSize,
+                this.device.settings[`ReverbTime`],
+              ) * 1000
+            ) / 1000
           }s</span>
         </label>
       </div>
@@ -193,6 +310,11 @@ customElements.define("master-reverb", class extends HTMLElement {
           }}
           .value=${live(settings.ReverbInitialDelay)}
         >
+        <span>${
+          REVERB_INITIAL_DELAY_VALUES[
+            this.device.settings[`ReverbInitialDelay`]
+          ]
+        }s</span>
       </label>
       <label>
         Decay
@@ -218,9 +340,11 @@ customElements.define("master-reverb", class extends HTMLElement {
           @input=${(e) => {
             const value = e.target.value;
             this.device.updateParamValue("ReverbRoomSize", parseInt(value));
+            this.render();
           }}
           .value=${live(settings.ReverbRoomSize)}
         >
+        <span>${this.device.settings[`ReverbRoomSize`]}</span>
       </label>
       <label>
         Diffusion
