@@ -23,7 +23,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
     };
 
     try {
-      this.device = new UR44();
+      this.device = new UR44Simulator();
       const { params, connectionName } = await this.device.open(
         paramUpdateHandler,
       );
@@ -241,22 +241,32 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
     const template = html`
     <app-header connection-name=${this.connectionName}></app-header>
     <div class="mix-select">
-      <button
-        class=${mix === 0 ? "active" : ""}
-        @click=${() => {
-          this.device.selectActiveMix(0);
-          this.activeMix = 0;
-          this.render();
-        }}
-      >Mix 1</button>
-      <button
-        class=${mix === 1 ? "active" : ""}
-        @click=${() => {
-          this.device.selectActiveMix(1);
-          this.activeMix = 1;
-          this.render();
-        }}
-      >Mix 2</button>
+      <label>
+        <input
+          type="radio"
+          name="mix-select"
+          checked=${mix === 0}
+          @click=${() => {
+            this.device.selectActiveMix(0);
+            this.activeMix = 0;
+            this.render();
+          }}
+        >
+        Mix 1
+      </label>
+      <label>
+        <input
+          type="radio"
+          name="mix-select"
+          checked=${mix === 1}
+          @click=${() => {
+            this.device.selectActiveMix(1);
+            this.activeMix = 1;
+            this.render();
+          }}
+        >
+        Mix 2
+        </label>
     </div>
     <div class="mixer-container">
       <stereo-input
