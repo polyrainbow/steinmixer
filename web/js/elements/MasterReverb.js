@@ -116,8 +116,8 @@ const PLATE_MAX_REVERB_TIMES = [
 /*
   Reverb time range depends on room size and reverb type.
   There are always 70 possible values which depend on the maximum value for the
-  combination of reverb type (hall, room, plate) and room size (1-10).
-  There are 5 key indexes where the values is given: 0, 47, 57, 67, 69
+  combination of reverb type (hall, room, plate) and room size (0-31).
+  There are 5 key indexes where the values are given: 0, 47, 57, 67, 69
   See also the graph in docs/reverb-time-range-example.png for a visualization.
   Between the key indexes, the values are linearly interpolated.
 */
