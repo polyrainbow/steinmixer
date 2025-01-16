@@ -6,6 +6,20 @@
   }
 }
 
+:root {
+  --white: white;
+  --black: black;
+  --blue: #0067ff;
+  --blue-alt: rgb(0, 152, 212);
+  --green: lime;
+  --green-alt: rgb(0, 162, 0);
+  --red: crimson;
+  --yellow: #ffe700;
+  --lightgrey: lightgray;
+  --grey: grey;
+  --darkgrey: #3e3e3e;
+}
+
 @layer theme {
   body {
     font-family: sans-serif;
@@ -20,10 +34,10 @@
   button, .button {
     cursor: pointer;
     border-radius: 0;
-    border: 0.1rem solid grey;
-    background-color: white;
+    border: 0.1rem solid var(--grey);
+    background-color: var(--white);
     text-decoration: none;
-    color: black;
+    color: var(--black);
     font-size: small;
     padding: 0.1rem 0.5rem;
   }
@@ -32,12 +46,12 @@
     appearance: none;
     cursor: pointer;
     border-radius: 0.3rem;
-    background-color: grey;
+    background-color: var(--grey);
   }
 
   input[type="range"]::-webkit-slider-thumb {
     appearance: none;
-    background-color: white;
+    background-color: var(--white);
     border-radius: 0.3rem;
     height: 1rem;
     width: 1rem;
@@ -55,15 +69,15 @@
     gap: 1em;
 
     .badge {
-      background-color: crimson;
-      color: white;
+      background-color: var(--red);
+      color: var(--white);
       border-radius: 0.5em;
       padding: 0.4em 0.9em;
       font-size: small;
       font-weight: bold;
 
       &.connected {
-        background-color: #0067ff;
+        background-color: var(--blue);
       }
     }
   }
@@ -75,13 +89,13 @@
 
     label {
       &:has(input:checked) {
-        background-color: lime;
+        background-color: var(--green);
       }
 
       font-size: larger;
       padding: 0.2em 1em;
       white-space: nowrap;
-      border: 2px solid grey;
+      border: 2px solid var(--grey);
       display: flex;
       align-self: center;
       gap: 0.5em;
@@ -107,13 +121,13 @@
       flex-direction: column;
 
       .stereo-toggle {
-        background-color: grey;
+        background-color: var(--grey);
         width: 100%;
         max-height: 2em;
         
 
         :has(input:checked) {
-          background-color: #ffe700;
+          background-color: var(--yellow);
         }
 
         label {
@@ -137,7 +151,7 @@
       gap: 1em;
       padding: 0.2em;
       padding-top: 1em;
-      background-color: lightgray;
+      background-color: var(--lightgrey);
       justify-content: flex-end;
 
       fx-section {
@@ -147,21 +161,21 @@
         vu-meter {
           height: 8em;
           display: flex;
-          background: black;
+          background: var(--black);
           width: 1.2em;
           align-items: self-end;
           position: relative;
 
           .momentary-overlay{
             height: 0em;
-            background-color: lime;
+            background-color: var(--green);
             position: relative;
             bottom: 0;
             width: 100%;
           }
 
           .max-bar {
-            background-color: white;
+            background-color: var(--white);
             height: 0.2em;
             width: 100%;
             position: absolute;
@@ -182,13 +196,13 @@
 
           .hpf-button {
             &.enabled {
-              background: lime;
+              background: var(--green);
             }
           }
 
           .invert-phase-button {
             &.enabled {
-              background: lime;
+              background: var(--green);
             }
           }
         }
@@ -203,14 +217,14 @@
           width: 6em;
           height: 1em;
           appearance: none;
-          background-color: rgb(0, 162, 0);
+          background-color: var(--green-alt);
           cursor: pointer;
           border-radius: 0.3rem;
         }
     
         input[type="range"]::-webkit-slider-thumb {
           appearance: none;
-          background-color: white;
+          background-color: var(--white);
           border-radius: 0.3rem;
           height: 1rem;
           width: 1rem;
@@ -226,14 +240,14 @@
           width: 6em;
           height: 1em;
           appearance: none;
-          background-color: rgb(0, 152, 212);
+          background-color: var(--blue-alt);
           cursor: pointer;
           border-radius: 0.3rem;
         }
     
         input[type="range"]::-webkit-slider-thumb {
           appearance: none;
-          background-color: white;
+          background-color: var(--white);
           border-radius: 0.3rem;
           height: 1rem;
           width: 1rem;
@@ -260,7 +274,7 @@
           align-items: center;
 
           button {
-            background-color: grey;
+            background-color: var(--grey);
             font-weight: bold;
             border: 0.15rem solid black;
             cursor: pointer;
@@ -270,16 +284,16 @@
           }
 
           .solo-button.active {
-            background-color: #ffe700;
+            background-color: var(--yellow);
           }
 
           .mute-button.active {
-            background-color: crimson;
+            background-color: var(--red);
           }
 
           .phantom-voltage-indicator {
-            background-color: grey;
-            border: 0.15rem solid black;
+            background-color: var(--grey);
+            border: 0.15rem solid var(--black);
             width: 1.5rem;
             box-sizing: border-box;
             aspect-ratio: 1;
@@ -290,7 +304,7 @@
             margin-top: 4em;
 
             &.enabled {
-              background-color: crimson;
+              background-color: var(--red);
             }
           }
 
@@ -305,7 +319,7 @@
           height: 15em;
           width: 1em;
           appearance: none;
-          background-color: black;
+          background-color: var(--black);
           cursor: pointer;
           border-radius: 0.3rem;
         }
@@ -313,7 +327,7 @@
         input[type="range"]::-webkit-slider-thumb {
           appearance: none;
           margin-top: -12px; /* Centers thumb on the track */
-          background-color: #0067ff;
+          background-color: var(--blue);
           border-radius: 0.3rem;
           height: 3.5rem;
           width: 2rem;
@@ -328,18 +342,18 @@
 
       .title {
         text-transform: uppercase;
-        color: #3e3e3e;
+        color: var(--darkgrey);
         font-weight: bold;
       }
     }
   }
 
   channel-strip[type="master"] volume-slider input[type="range"]::-webkit-slider-thumb {
-    background-color: crimson;
+    background-color: var(--red);
   }
 
   master-reverb, interface-settings {
-    background-color: lightgrey;
+    background-color: var(--lightgrey);
     width: fit-content;
     padding: 1em;
     display: flex;

@@ -23,7 +23,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
     };
 
     try {
-      this.device = new UR44Simulator();
+      this.device = new UR44();
       const { params, connectionName } = await this.device.open(
         paramUpdateHandler,
       );
