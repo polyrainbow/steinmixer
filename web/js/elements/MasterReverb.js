@@ -111,7 +111,7 @@ const PLATE_MAX_REVERB_TIMES = [
   48.6,
   50.3,
   52,
-]
+];
 
 /*
   Reverb time range depends on room size and reverb type.
@@ -123,7 +123,7 @@ const PLATE_MAX_REVERB_TIMES = [
 */
 const getReverbTime = (MAX, x) => {
   if (x < 0 || x > 69) {
-      throw new Error("x is out of range: " + x);
+    throw new Error("x is out of range: " + x);
   }
 
   const MIN = MAX / 100;
@@ -162,7 +162,7 @@ const getReverbTime = (MAX, x) => {
       continue;
     }
   }
-}
+};
 
 const getReverbTimeFromRoomSize = (reverbType, roomSize, x) => {
   let max;
@@ -177,7 +177,7 @@ const getReverbTimeFromRoomSize = (reverbType, roomSize, x) => {
   }
 
   return getReverbTime(max, x);
-}
+};
 
 
 customElements.define("master-reverb", class extends HTMLElement {
@@ -282,8 +282,8 @@ customElements.define("master-reverb", class extends HTMLElement {
             getReverbTimeFromRoomSize(
               this.device.settings.ReverbType,
               this.device.settings.ReverbRoomSize,
-              this.device.settings[`ReverbTime`],
-            ) * 1000
+              this.device.settings["ReverbTime"],
+            ) * 1000,
           ) / 1000
         }s</span>
       </label>
@@ -304,7 +304,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           }}
           .value=${live(settings.ReverbInitialDelay)}
         >
-        <span>${this.device.settings[`ReverbInitialDelay`]}</span>
+        <span>${this.device.settings["ReverbInitialDelay"]}</span>
       </label>
       <label>
         Decay
@@ -320,7 +320,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           }}
           .value=${live(settings.ReverbDecay)}
         >
-        <span>${this.device.settings[`ReverbDecay`]}</span>
+        <span>${this.device.settings["ReverbDecay"]}</span>
       </label>
       <label>
         Room Size
@@ -336,7 +336,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           }}
           .value=${live(settings.ReverbRoomSize)}
         >
-        <span>${this.device.settings[`ReverbRoomSize`]}</span>
+        <span>${this.device.settings["ReverbRoomSize"]}</span>
       </label>
       <label>
         Diffusion
@@ -352,7 +352,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           }}
           .value=${live(settings.ReverbDiffusion)}
         >
-        <span>${this.device.settings[`ReverbDiffusion`]}</span>
+        <span>${this.device.settings["ReverbDiffusion"]}</span>
       </label>
       <label>
         HPF
@@ -368,7 +368,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           }}
           .value=${live(settings.ReverbHPF)}
         >
-        <span>${this.device.settings[`ReverbHPF`]}</span>
+        <span>${this.device.settings["ReverbHPF"]}</span>
       </label>
       <label>
         LPF
@@ -384,7 +384,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           }}
           .value=${live(settings.ReverbLPF)}
         >
-        <span>${this.device.settings[`ReverbLPF`]}</span>
+        <span>${this.device.settings["ReverbLPF"]}</span>
       </label>
       <label>
         Hi Ratio
@@ -400,7 +400,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           }}
           .value=${live(settings.ReverbHighRatio)}
         >
-        <span>${this.device.settings[`ReverbHighRatio`]}</span>
+        <span>${this.device.settings["ReverbHighRatio"]}</span>
       </label>
       <label>
         Low Ratio
@@ -416,7 +416,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           }}
           .value=${live(settings.ReverbLowRatio)}
         >
-        <span>${this.device.settings[`ReverbLowRatio`]}</span>
+        <span>${this.device.settings["ReverbLowRatio"]}</span>
       </label>
       <label>
         Low Freq
@@ -432,7 +432,7 @@ customElements.define("master-reverb", class extends HTMLElement {
           }}
           .value=${live(settings.ReverbLowFreq)}
         >
-        <span>${this.device.settings[`ReverbLowFreq`]}</span>
+        <span>${this.device.settings["ReverbLowFreq"]}</span>
       </label>
     </section>
     `;

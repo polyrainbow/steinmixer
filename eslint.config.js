@@ -32,7 +32,10 @@ export default [
       ],
       "@stylistic/no-mixed-spaces-and-tabs": ["error"],
       "@stylistic/operator-linebreak": ["error", "before"],
-      "@stylistic/max-len": ["error", { "code": 80 }],
+      "@stylistic/max-len": ["error", {
+        "code": 80,
+        "ignoreTemplateLiterals": true,
+      }],
       "@stylistic/no-trailing-spaces": ["error"],
       "@stylistic/eol-last": ["error", "always"],
       "@stylistic/dot-location": ["error", "property"],
