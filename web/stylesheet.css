@@ -4,10 +4,11 @@
   body {
     font-family: sans-serif;
     user-select: none;
+    margin: 1rem;
   }
 
   h1 {
-    margin: 0.2em 0;
+    margin: 0;
   }
 
   button {
@@ -46,7 +47,7 @@
       background-color: crimson;
       color: white;
       border-radius: 0.5em;
-      padding: 0.3em;
+      padding: 0.4em 0.9em;
       font-size: small;
       font-weight: bold;
 
@@ -376,6 +377,11 @@
 
       input, select {
         width: auto;
+      }
+
+      label {
+        display: flex;
+        gap: 0.4em;
       }
     }
   }
