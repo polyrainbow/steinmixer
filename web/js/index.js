@@ -8,3 +8,4 @@ import "./elements/SteinMixer.js";
 import "./elements/FXSection.js";
 import "./elements/VUMeter.js";
 import "./elements/MasterReverb.js";
+import "./elements/InterfaceSettings.js";

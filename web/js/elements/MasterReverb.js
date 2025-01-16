@@ -180,10 +180,6 @@ const getReverbTimeFromRoomSize = (reverbType, roomSize, x) => {
 }
 
 
-const REVERB_INITIAL_DELAY_VALUES = [
-
-];
-
 customElements.define("master-reverb", class extends HTMLElement {
   constructor() {
     super();
@@ -198,6 +194,7 @@ customElements.define("master-reverb", class extends HTMLElement {
   }
 
   connectedCallback() {
+    this.id = "master-reverb";
     this.classList.add("side-panel");
     this.render();
   }
@@ -225,34 +222,32 @@ customElements.define("master-reverb", class extends HTMLElement {
           <option value="1">Mix 2</option>
         </select>
       </label>
-      <div>
-        <label>
-          Return level (Mix ${parseInt(mix) + 1})
-          <input
-            type="range"
-            min="0"
-            max="127"
-            step="1"
-            @input=${(e) => {
-              const value = e.target.value;
-              this.device.updateParamValue(
-                `Mix${
-                  parseInt(mix)
-                }ReverbVolume`,
-                parseInt(value),
-              );
-              this.render();
-            }}
-            .value=${live(this.device.settings[`Mix${mix}ReverbVolume`])}
-          >
-        </label>
+      <label>
+        Return level (Mix ${parseInt(mix) + 1})
+        <input
+          type="range"
+          min="0"
+          max="127"
+          step="1"
+          @input=${(e) => {
+            const value = e.target.value;
+            this.device.updateParamValue(
+              `Mix${
+                parseInt(mix)
+              }ReverbVolume`,
+              parseInt(value),
+            );
+            this.render();
+          }}
+          .value=${live(this.device.settings[`Mix${mix}ReverbVolume`])}
+        >
         <span>${
           getDBFSLabel(
             this.device.settings[`Mix${mix}ReverbVolume`],
             val => this.device.getDBFSFromSliderValue(val),
           )
         }</span>
-      </div>
+      </label>
       <label>
         Type
         <select
@@ -268,32 +263,30 @@ customElements.define("master-reverb", class extends HTMLElement {
           <option value="2">Plate</option>
         </select>
       </label>
-      <div>
-        <label>
-          Time
-          <input
-            type="range"
-            min="0"
-            max="69"
-            step="1"
-            @input=${(e) => {
-              const value = e.target.value;
-              this.device.updateParamValue("ReverbTime", parseInt(value));
-              this.render();
-            }}
-            .value=${live(this.device.settings.ReverbTime)}
-          >
-          <span>${
-            Math.round(
-              getReverbTimeFromRoomSize(
-                this.device.settings.ReverbType,
-                this.device.settings.ReverbRoomSize,
-                this.device.settings[`ReverbTime`],
-              ) * 1000
-            ) / 1000
-          }s</span>
-        </label>
-      </div>
+      <label>
+        Time
+        <input
+          type="range"
+          min="0"
+          max="69"
+          step="1"
+          @input=${(e) => {
+            const value = e.target.value;
+            this.device.updateParamValue("ReverbTime", parseInt(value));
+            this.render();
+          }}
+          .value=${live(this.device.settings.ReverbTime)}
+        >
+        <span>${
+          Math.round(
+            getReverbTimeFromRoomSize(
+              this.device.settings.ReverbType,
+              this.device.settings.ReverbRoomSize,
+              this.device.settings[`ReverbTime`],
+            ) * 1000
+          ) / 1000
+        }s</span>
+      </label>
       <label>
         Initial Delay
         <input
@@ -307,14 +300,11 @@ customElements.define("master-reverb", class extends HTMLElement {
               "ReverbInitialDelay",
               parseInt(value),
             );
+            this.render();
           }}
           .value=${live(settings.ReverbInitialDelay)}
         >
-        <span>${
-          REVERB_INITIAL_DELAY_VALUES[
-            this.device.settings[`ReverbInitialDelay`]
-          ]
-        }s</span>
+        <span>${this.device.settings[`ReverbInitialDelay`]}</span>
       </label>
       <label>
         Decay
@@ -326,9 +316,11 @@ customElements.define("master-reverb", class extends HTMLElement {
           @input=${(e) => {
             const value = e.target.value;
             this.device.updateParamValue("ReverbDecay", parseInt(value));
+            this.render();
           }}
           .value=${live(settings.ReverbDecay)}
         >
+        <span>${this.device.settings[`ReverbDecay`]}</span>
       </label>
       <label>
         Room Size
@@ -356,9 +348,11 @@ customElements.define("master-reverb", class extends HTMLElement {
           @input=${(e) => {
             const value = e.target.value;
             this.device.updateParamValue("ReverbDiffusion", parseInt(value));
+            this.render();
           }}
           .value=${live(settings.ReverbDiffusion)}
         >
+        <span>${this.device.settings[`ReverbDiffusion`]}</span>
       </label>
       <label>
         HPF
@@ -370,9 +364,11 @@ customElements.define("master-reverb", class extends HTMLElement {
           @input=${(e) => {
             const value = e.target.value;
             this.device.updateParamValue("ReverbHPF", parseInt(value));
+            this.render();
           }}
           .value=${live(settings.ReverbHPF)}
         >
+        <span>${this.device.settings[`ReverbHPF`]}</span>
       </label>
       <label>
         LPF
@@ -384,9 +380,11 @@ customElements.define("master-reverb", class extends HTMLElement {
           @input=${(e) => {
             const value = e.target.value;
             this.device.updateParamValue("ReverbLPF", parseInt(value));
+            this.render();
           }}
           .value=${live(settings.ReverbLPF)}
         >
+        <span>${this.device.settings[`ReverbLPF`]}</span>
       </label>
       <label>
         Hi Ratio
@@ -398,9 +396,11 @@ customElements.define("master-reverb", class extends HTMLElement {
           @input=${(e) => {
             const value = e.target.value;
             this.device.updateParamValue("ReverbHighRatio", parseInt(value));
+            this.render();
           }}
           .value=${live(settings.ReverbHighRatio)}
         >
+        <span>${this.device.settings[`ReverbHighRatio`]}</span>
       </label>
       <label>
         Low Ratio
@@ -412,9 +412,11 @@ customElements.define("master-reverb", class extends HTMLElement {
           @input=${(e) => {
             const value = e.target.value;
             this.device.updateParamValue("ReverbLowRatio", parseInt(value));
+            this.render();
           }}
           .value=${live(settings.ReverbLowRatio)}
         >
+        <span>${this.device.settings[`ReverbLowRatio`]}</span>
       </label>
       <label>
         Low Freq
@@ -426,9 +428,11 @@ customElements.define("master-reverb", class extends HTMLElement {
           @input=${(e) => {
             const value = e.target.value;
             this.device.updateParamValue("ReverbLowFreq", parseInt(value));
+            this.render();
           }}
           .value=${live(settings.ReverbLowFreq)}
         >
+        <span>${this.device.settings[`ReverbLowFreq`]}</span>
       </label>
     </section>
     `;
