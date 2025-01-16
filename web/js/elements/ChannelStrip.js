@@ -61,15 +61,10 @@ customElements.define("channel-strip", class extends HTMLElement {
           channel-id=${this.getAttribute("channel-id")}
         ></send-slider>`
         : this.getAttribute("type") === "master"
-          ? html`<button
-            class="master-reverb"
-            style="visibility: hidden"
-            @click=${() => {
-              this.dispatchEvent(
-                new Event("open-master-reverb", { bubbles: true }),
-              );
-            }}
-          >Reverb<br>settings</button>`
+          ? html`<a
+            class="button master-reverb"
+            href="#master-reverb"
+          >Reverb<br>settings</a>`
           : html`<div class="daw-reverb-placeholder"></div>`
     }
     <pan-slider

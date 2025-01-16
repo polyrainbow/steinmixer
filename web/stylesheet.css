@@ -1,5 +1,11 @@
 @layer theme, utilities;
 
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    scroll-behavior: smooth;
+  }
+}
+
 @layer theme {
   body {
     font-family: sans-serif;
@@ -11,10 +17,15 @@
     margin: 0;
   }
 
-  button {
+  button, .button {
     cursor: pointer;
     border-radius: 0;
-    border: 0.15em solid grey;
+    border: 0.1rem solid grey;
+    background-color: white;
+    text-decoration: none;
+    color: black;
+    font-size: small;
+    padding: 0.1rem 0.5rem;
   }
 
   input[type="range"] {
@@ -165,7 +176,7 @@
             display: flex;
 
             svg {
-              width: 1.5em;
+              width: 1.25rem;
             }
           }
 

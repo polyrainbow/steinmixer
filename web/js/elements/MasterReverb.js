@@ -194,6 +194,7 @@ customElements.define("master-reverb", class extends HTMLElement {
   }
 
   connectedCallback() {
+    this.id = "master-reverb";
     this.classList.add("side-panel");
     this.render();
   }
