@@ -1,4 +1,4 @@
-const INIT_PARAMS = { // TODO: update param names
+const INIT_PARAMS = {
   Input0Link: 0,
   Input2Link: 0,
   Input4Link: 1,

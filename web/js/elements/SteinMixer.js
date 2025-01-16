@@ -245,7 +245,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         <input
           type="radio"
           name="mix-select"
-          checked=${mix === 0}
+          .checked=${live(mix === 0)}
           @click=${() => {
             this.device.selectActiveMix(0);
             this.activeMix = 0;
@@ -258,7 +258,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         <input
           type="radio"
           name="mix-select"
-          checked=${mix === 1}
+          .checked=${live(mix === 1)}
           @click=${() => {
             this.device.selectActiveMix(1);
             this.activeMix = 1;
