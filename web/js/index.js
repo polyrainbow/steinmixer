@@ -9,3 +9,4 @@ import "./elements/FXSection.js";
 import "./elements/VUMeter.js";
 import "./elements/MasterReverb.js";
 import "./elements/InterfaceSettings.js";
+import "./elements/ChannelFX.js";

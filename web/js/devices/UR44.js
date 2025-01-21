@@ -573,3 +573,49 @@ export default class UR44 {
     initMessages.forEach((m) => this.#midiOutput.send(m));
   };
 }
+
+
+/*
+According to the UR44 manual, the following FX combinations are possible
+
+Channel Strip Guitar Amp Emulation
+Mono Stereo   Mono Stereo
+4    0        0    -
+2    1        0    -
+2    0        1    -
+0    2        0    -
+0    1        1    -
+
+This means we have a total budget of 4 (counting stereo channel strip and
+guitar amp emulation with 2, with the additional requirement that there
+can be only one guitar amp emulation active)
+*/
+
+const canAddFx = (type, existingState) => {
+  const result = {};
+  if (type === "channelStripMono") {
+    const canUse = existingState.budgetInUse < 4;
+    result.canUse = canUse;
+    result.budgetInUse = canUse
+      ? result.budgetInUse + 1
+      : result.budgetInUse;
+    result.guitarAmpEmulationInUse = existingState.guitarAmpEmulationInUse;
+  } else if (type === "channelStripStereo") {
+    const canUse = existingState.budgetInUse < 3;
+    result.canUse = canUse;
+    result.budgetInUse = canUse
+      ? result.budgetInUse + 2
+      : result.budgetInUse;
+    result.guitarAmpEmulationInUse = existingState.guitarAmpEmulationInUse;
+  } else if (type === "guitarAmpEmulation") {
+    const canUse = existingState.budgetInUse < 3
+      && !existingState.guitarAmpEmulationInUse;
+    result.canUse = canUse;
+    result.budgetInUse = canUse
+      ? result.budgetInUse + 2
+      : result.budgetInUse;
+    result.guitarAmpEmulationInUse = canUse;
+  }
+
+  return result;
+};

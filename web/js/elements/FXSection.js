@@ -99,8 +99,22 @@ customElements.define("fx-section", class extends HTMLElement {
               </button>`
               : ""
           }
-          </div>`
-        : ""
+          <button
+            @click=${() => {
+              console.log(
+                "channel strip requested", this.getAttribute("channel-id"),
+              );
+            }}
+          >CS</button>
+          <button
+            @click=${() => {
+              console.log(
+                "amp requested", this.getAttribute("channel-id"),
+              );
+            }}
+          >Amp</button>
+        </div>`
+      : ""
     }
     `;
 
