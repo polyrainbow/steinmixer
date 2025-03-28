@@ -16,7 +16,6 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
   openSidePanel = null;
   activeMix = 0;
   device;
-  fxPanelChannelId = "analog1";
 
   async connectedCallback() {
     this.render();
