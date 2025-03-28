@@ -58,7 +58,7 @@ customElements.define(
             HPF
           </label>
           <select
-            id="hpf-level-select"
+            id="hpf-select"
             @change=${(e) => {
               const value = parseInt(e.target.value);
               this.device.updateParamValue("InputHPFSetting", value);

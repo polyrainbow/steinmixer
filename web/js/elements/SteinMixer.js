@@ -3,6 +3,8 @@ import "./StereoInput.js";
 import { html, render, live } from "../lit.js";
 import UR44 from "../devices/UR44.js";
 
+const USE_SIMULATOR = false;
+
 customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
   constructor() {
     super();
@@ -14,6 +16,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
   openSidePanel = null;
   activeMix = 0;
   device;
+  fxPanelChannelId = "analog1";
 
   async connectedCallback() {
     this.render();
@@ -23,7 +26,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
     };
 
     try {
-      this.device = new UR44();
+      this.device = USE_SIMULATOR ? new UR44Simulator() : new UR44();
       const { params, connectionName } = await this.device.open(
         paramUpdateHandler,
       );
@@ -272,8 +275,8 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       <stereo-input
         .device=${this.device}
         link-inputs=${params.Input0Link}
-        title-l="Analog 1"
-        title-r="Analog 2"
+        title-l=${UR44.INPUT_CHANNEL_TITLES[0]}
+        title-r=${UR44.INPUT_CHANNEL_TITLES[1]}
         channel-id-l="analog1"
         channel-id-r="analog2"
         volume-l=${params[`Mix${mix}Input0Volume`]}
@@ -298,8 +301,8 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       <stereo-input
         .device=${this.device}
         link-inputs=${params.Input2Link}
-        title-l="Analog 3"
-        title-r="Analog 4"
+        title-l=${UR44.INPUT_CHANNEL_TITLES[2]}
+        title-r=${UR44.INPUT_CHANNEL_TITLES[3]}
         channel-id-l="analog3"
         channel-id-r="analog4"
         volume-l=${params[`Mix${mix}Input2Volume`]}
@@ -324,8 +327,8 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       <stereo-input
         .device=${this.device}
         link-inputs=${params.Input4Link}
-        title-l="Analog 5"
-        title-r="Analog 6"
+        title-l=${UR44.INPUT_CHANNEL_TITLES[4]}
+        title-r=${UR44.INPUT_CHANNEL_TITLES[5]}
         channel-id-l="analog5"
         channel-id-r="analog6"
         volume-l=${params[`Mix${mix}Input4Volume`]}
@@ -372,6 +375,10 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         }}
       ></channel-strip>
     </div>
+
+    <channel-fx
+      .device=${this.device}
+    ></channel-fx>
 
     <master-reverb
       .device=${this.device}

@@ -122,4 +122,44 @@ ReverbInputMix,37,null,0,1,0,3500,false,0:mix1; 1:mix2
 
 PhantomPower01,null,null,0,1,null,3504,true,0:off; 1:on
 PhantomPower23,null,null,0,1,null,3505,true,0:off; 1:on
+
+AmpType,102,null,0,3,0,3406,false,0:Clean; 1:Crunch; 2:Lead; 3:Drive
+
+AmpCleanVolume,104,null,0,64,32,3408,false,
+AmpCleanDistortion,105,null,0,64,32,3409,false,
+AmpCleanModulation,116,null,0,2,1,3422,false,0:Chorus; 1:off; 2:Vibrato,
+AmpCleanVibratoSpeed,117,null,0,64,32,3423,false,
+AmpCleanVibratoDepth,118,null,0,64,32,3424,false,
+AmpCleanTreble,108,null,0,64,32,3412,false,
+AmpCleanMiddle,107,null,0,64,32,3411,false,
+AmpCleanBass,106,null,0,64,32,3410,false,
+AmpCleanPresence,109,null,0,64,32,3414,false,
+AmpCleanBlend,103,null,0,64,32,3407,false,
+AmpCleanOutput,111,null,0,127,32,3416,false,
+
+AmpCrunchMode,121,null,0,1,1,3427,false,0: Normal; 1: Bright
+AmpCrunchGain,122,null,0,64,32,3428,false,
+AmpCrunchTreble,126,null,0,64,32,3433,false,
+AmpCrunchMiddle,125,null,0,64,32,3432,false,
+AmpCrunchBass,124,null,0,64,32,3431,false,
+AmpCrunchPresence,127,null,0,64,32,3434,false,
+AmpCrunchOutput,129,null,0,127,32,3436,false,
+
+AmpLeadType,139,null,0,5,1,3448,false,0:High; 1:Low
+AmpLeadGain,140,null,0,64,32,3449,false,
+AmpLeadMaster,146,null,0,64,32,3456,false,
+AmpLeadTreble,144,null,0,64,32,3454,false,
+AmpLeadMiddle,143,null,0,64,32,3452,false,
+AmpLeadBass,142,null,0,64,32,3451,false,
+AmpLeadPresence,145,null,0,64,32,3455,false,
+AmpLeadOutput,147,null,0,127,32,3457,false,
+
+AmpDriveType,157,null,0,5,1,3468,false,
+AmpDriveGain,158,null,0,64,32,3470,false,
+AmpDriveMaster,164,null,0,64,32,3476,false,
+AmpDriveTreble,162,null,0,64,32,3474,false,
+AmpDriveMiddle,161,null,0,64,32,3473,false,
+AmpDriveBass,160,null,0,64,32,3472,false,
+AmpDrivePresence,163,null,0,64,32,3475,false,
+AmpDriveOutput,165,null,0,127,32,3478,false,
 `;

@@ -27,14 +27,15 @@ models to test with. However, it should be straight-forward to adapt this tool.
 # Features and missing features
 ✅ What is possible:
 
-- Volume control, mute, soloing all analog inputs, DAW and Main channels.
-- Gain metering of all channels
+- Volume control, mute, solo for all analog inputs, and for DAW and Main channel
+- Gain meters for all channels
 - Save and recall 2 independent mixes
 - Loopback
 - Highpass filter on inputs
 - Phase inversion on inputs
 - Stereo linking of channels
 - Reverb
+- Guitar amp emulations
 
 ❌ What is not (yet) possible:
 

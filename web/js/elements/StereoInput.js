@@ -65,6 +65,7 @@ customElements.define("stereo-input", class extends HTMLElement {
     <div class="stereo-toggle">
       <label title="Link channels">
         <input
+          name="link-inputs-${this.getAttribute("channel-id-l")}"
           type="checkbox"
           .checked=${live(parseInt(this.getAttribute("link-inputs")) === 1)}
           @change=${(e) => {

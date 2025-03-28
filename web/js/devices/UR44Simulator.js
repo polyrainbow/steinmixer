@@ -1,3 +1,5 @@
+import { canSetFx } from "./UR44.js";
+
 const INIT_PARAMS = {
   Input0Link: 0,
   Input2Link: 0,
@@ -100,6 +102,7 @@ const INIT_PARAMS = {
   PhantomPower01: 1,
   PhantomPower23: 0,
   Input45Level: 0,
+  AmpType: 0,
 };
 
 const vuValues = {
@@ -148,15 +151,52 @@ const vuValues = {
 export default class UR44Simulator {
   async open(messageHandler) {
     this.settings = INIT_PARAMS;
+    this.fxState = [
+      {
+        type: "amp",
+        mode: "monitor",
+      },
+      {
+        type: "off",
+      },
+      {
+        type: "off",
+      },
+      {
+        type: "channel-strip",
+        mode: "monitor",
+      },
+      {
+        type: "off",
+      },
+      {
+        type: "off",
+      },
+    ];
+
+    console.log("UR44 Simulator opened");
+
     return {
       params: this.settings,
       connectionName: "UR44 Simulator",
+      fxState: this.fxState,
     };
   }
 
   getVuValues(channelId) {
     return vuValues[channelId];
   };
+
+  setFX(channelIndex, type, mode) {
+    if (!canSetFx(type, channelIndex, this.fxState.map((fx) => fx.type))) {
+      throw new Error("Cannot add FX due to lack of resources: " + type);
+    }
+
+    this.fxState[channelIndex] = {
+      type,
+      mode,
+    };
+  }
 
   updateParamValue(paramName, value) {
     if (typeof value !== "number") {

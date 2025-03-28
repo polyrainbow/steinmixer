@@ -1,6 +1,13 @@
 import { arraysAreEqual } from "./utils.js";
 import UR44Params from "./UR44-params.js";
 
+export const AMP_TYPES = [
+  "Clean",
+  "Crunch",
+  "Lead",
+  "Drive",
+];
+
 const getMIDIDevices = async () => {
   const midi = await navigator.requestMIDIAccess({ sysex: true });
 
@@ -105,9 +112,13 @@ export default class UR44 {
             return true;
           },
         });
+
+        this.fxState = [...messageParsed.fxState];
+
         resolve({
           params: this.settings,
           connectionName: this.#midiOutput.name,
+          fxState: this.fxState,
         });
       } else if (messageParsed.type === "meter-update") {
         this.vuValues = messageParsed.values;
@@ -157,6 +168,55 @@ export default class UR44 {
     ];
     this.#midiOutput.send(message);
   };
+
+  static FX_HEADER = [0xF0, 0x43, 0x10, 0x3E, 0x14, 0x03, 0x08];
+
+  setFX(channelIndex, type, mode) {
+    console.log("setFX", channelIndex, type, mode);
+    if (!canSetFx(type, channelIndex, this.fxState.map((s) => s.type))) {
+      throw new Error("Cannot add FX due to lack of resources: " + type);
+    }
+
+    const modeByte = mode === "monitor" ? 0x01 : 0x00;
+
+    const turnOnCSMessage = [
+      ...UR44.FX_HEADER, 0x01, 0x00, 0x00, 0x00, channelIndex, modeByte, 0xf7,
+    ];
+    const turnOnAmpMessage = [
+      ...UR44.FX_HEADER, 0x01, 0x01, 0x00, 0x00, channelIndex, modeByte, 0xf7,
+    ];
+
+    const turnOffCSMessage = [
+      ...UR44.FX_HEADER, 0x02, 0x00, 0x00, 0x00, channelIndex, 0xf7,
+    ];
+    const turnOffAmpMessage = [
+      ...UR44.FX_HEADER, 0x02, 0x01, 0x00, 0x00, channelIndex, 0xf7,
+    ];
+
+    if (type === "off") {
+      this.#midiOutput.send(turnOffCSMessage);
+      this.#midiOutput.send(turnOffAmpMessage);
+      this.fxState[channelIndex] = {
+        type: "off",
+      };
+    } else if (type === "channel-strip") {
+      this.#midiOutput.send(turnOffAmpMessage);
+      this.#midiOutput.send(turnOnCSMessage);
+      this.fxState[channelIndex] = {
+        type,
+        mode,
+      };
+    } else if (type === "amp") {
+      this.#midiOutput.send(turnOffCSMessage);
+      this.#midiOutput.send(turnOnAmpMessage);
+      this.fxState[channelIndex] = {
+        type,
+        mode,
+      };
+    } else {
+      throw new Error("Invalid FX type: " + type);
+    }
+  }
 
   getVuValues(channelId) {
     if (!this.vuValues) throw new Error(
@@ -382,6 +442,15 @@ export default class UR44 {
     "analog6",
   ];
 
+  static INPUT_CHANNEL_TITLES = [
+    "Analog 1",
+    "Analog 2",
+    "Analog 3",
+    "Analog 4",
+    "Analog 5",
+    "Analog 6",
+  ];
+
   getChannelIndexFromChannelId(channelId) {
     return UR44.INPUT_CHANNEL_IDS.indexOf(channelId);
   };
@@ -535,9 +604,45 @@ export default class UR44 {
         }
       }
 
+      const getFxState = (csInsOn, csMonOn, ampInsOn, ampMonOn) => {
+        if (csInsOn === 1) {
+          return {
+            type: "channel-strip",
+            mode: "insert",
+          };
+        } else if (csMonOn === 1) {
+          return {
+            type: "channel-strip",
+            mode: "monitor",
+          };
+        } else if (ampInsOn === 1) {
+          return {
+            type: "amp",
+            mode: "insert",
+          };
+        } else if (ampMonOn === 1) {
+          return {
+            type: "amp",
+            mode: "monitor",
+          };
+        } else {
+          return {
+            type: "off",
+          };
+        }
+      };
+
       return {
         "type": "init",
         values,
+        fxState: [
+          getFxState(message[971], message[978], message[985], message[992]),
+          getFxState(message[972], message[979], message[986], message[993]),
+          getFxState(message[974], message[980], message[987], message[994]),
+          getFxState(message[975], message[982], message[988], message[995]),
+          getFxState(message[976], message[983], message[990], message[996]),
+          getFxState(message[977], message[984], message[991], message[998]),
+        ],
       };
     }
 
@@ -573,3 +678,68 @@ export default class UR44 {
     initMessages.forEach((m) => this.#midiOutput.send(m));
   };
 }
+
+
+/*
+According to the UR44 manual, the following FX combinations are possible
+
+Channel Strip Guitar Amp Emulation
+Mono Stereo   Mono Stereo
+4    0        0    -
+2    1        0    -
+2    0        1    -
+0    2        0    -
+0    1        1    -
+
+This means we have a total budget of 4 (counting stereo channel strip and
+guitar amp emulation with 2, with the additional requirement that there
+can be only one guitar amp emulation active)
+*/
+
+export const getBudgetInUse = (existingActiveTypes) => {
+  return existingActiveTypes
+    .reduce((a, b) => {
+      if (b === "channel-strip") {
+        return a + 1;
+      } else if (b === "amp") {
+        return a + 2;
+      } else if (b === "off") {
+        return a;
+      }
+      throw new Error("Unknown FX type: " + b);
+    }, 0);
+};
+
+// TODO: consider stereo channel strips
+export const canSetFx = (type, channelIndex, existingActiveTypes) => {
+  const budgetInUse = getBudgetInUse(existingActiveTypes);
+  const existingChannelType = existingActiveTypes[channelIndex];
+
+  if (type === "channel-strip") {
+    /*
+      Adding a channel-strip is allowed if the budget is not exceeded
+      or if there is already some fx on that channel. If there is already one,
+      the budget can't increase by setting this channel to channel-strip.
+    */
+    return budgetInUse < 4
+      || existingChannelType !== "off";
+  } else if (type === "amp") {
+    /*
+      Adding an amp is allowed if the budget is not exceeded and there is no
+      other amp in use.
+      Only if this channel uses already the amp, it should be allowed to
+      re-set it to amp.
+    */
+    return (
+      (
+        budgetInUse < 3
+        && existingActiveTypes.filter((s) => s === "amp").length === 0
+      )
+      || existingChannelType === "amp"
+    );
+  } else if (type === "off") {
+    return true;
+  } else {
+    throw new Error("Unknown FX type: " + type);
+  }
+};

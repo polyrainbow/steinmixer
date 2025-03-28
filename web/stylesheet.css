@@ -29,6 +29,7 @@
 
   h1 {
     margin: 0;
+    text-box: trim-both cap alphabetic;
   }
 
   button, .button {
@@ -188,6 +189,7 @@
 
           button {
             display: flex;
+            justify-content: center;
 
             svg {
               width: 1.25rem;
@@ -204,6 +206,11 @@
             &.enabled {
               background: var(--green);
             }
+          }
+
+          select {
+            font-size: small;
+            width: 4.2em;
           }
         }
       }
@@ -350,6 +357,58 @@
 
   channel-strip[type="master"] volume-slider input[type="range"]::-webkit-slider-thumb {
     background-color: var(--red);
+  }
+
+  channel-fx {
+    background-color: var(--lightgrey);
+    width: fit-content;
+    padding: 1em;
+    display: flex;
+    flex-direction: row;
+    gap: 1em;
+
+    .channel-fx-panel {
+      display: flex;
+      flex-direction: column;
+
+      h2 {
+        margin-top: 0;
+        margin-bottom: 0.5em;
+      }
+  
+      .settings {
+        display: flex;
+        flex-direction: column;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        padding: 0;
+        max-height: 22rem;
+  
+        input, select {
+          display: block;
+          width: 10rem;
+        }
+  
+        & > * {
+          max-width: 10em;
+        }
+  
+        & > label {
+          display: flex;
+          flex-direction: column;
+  
+          span {
+            font-size: smaller;
+          }
+        }
+  
+        .description {
+          display: block;
+          font-size: small;
+          word-break: break-word;
+        }
+      }
+    }
   }
 
   master-reverb, interface-settings {
