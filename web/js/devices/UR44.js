@@ -201,11 +201,20 @@ export default class UR44 {
     if (type === "off") {
       this.#midiOutput.send(turnOffCSMessage);
       this.#midiOutput.send(turnOffAmpMessage);
+
+      // refresh all stack indexes if channel strip is removed
+      if (this.fxState[channelIndex].type === "channel-strip") {
+        const stackIndex = this.fxState[channelIndex].stackIndex;
+        this.fxState.forEach((fx, i) => {
+          if (fx.type === "channel-strip" && fx.stackIndex > stackIndex) {
+            this.fxState[i].stackIndex--;
+          }
+        });
+      }
+
       this.fxState[channelIndex] = {
         type: "off",
       };
-
-      // TODO: refresh stack indexes if channel strip is removed
 
     } else if (type === "channel-strip") {
       this.#midiOutput.send(turnOffAmpMessage);
@@ -241,9 +250,19 @@ export default class UR44 {
         stackIndex,
       };
     } else if (type === "amp") {
-      // TODO: refresh stack indexes if channel strip is removed
       this.#midiOutput.send(turnOffCSMessage);
       this.#midiOutput.send(turnOnAmpMessage);
+
+      // refresh all stack indexes if channel strip is removed
+      if (this.fxState[channelIndex].type === "channel-strip") {
+        const stackIndex = this.fxState[channelIndex].stackIndex;
+        this.fxState.forEach((fx, i) => {
+          if (fx.type === "channel-strip" && fx.stackIndex > stackIndex) {
+            this.fxState[i].stackIndex--;
+          }
+        });
+      }
+
       this.fxState[channelIndex] = {
         type,
         mode,
