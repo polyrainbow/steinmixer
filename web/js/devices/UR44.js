@@ -163,8 +163,13 @@ export default class UR44 {
     const v3 = (v32 >> 7 * 3) & 0x7F;
     const v4 = (v32 >> 7 * 4) & 0x7F;
     const message = [
-      0xF0, 0x43, 0x10, 0x3E, 0x14, 0x01, 0x01, 0x00,
-      p1, p0, 0x00, 0x00, channelIndex, v4, v3, v2, v1, v0, 0xF7,
+      0xF0, 0x43, 0x10,
+      0x3E, 0x14, 0x01,
+      0x01, 0x00, p1,
+      p0, 0x00, 0x00,
+      channelIndex, v4, v3,
+      v2, v1, v0,
+      0xF7,
     ];
     this.#midiOutput.send(message);
   };
@@ -199,14 +204,44 @@ export default class UR44 {
       this.fxState[channelIndex] = {
         type: "off",
       };
+
+      // TODO: refresh stack indexes if channel strip is removed
+
     } else if (type === "channel-strip") {
       this.#midiOutput.send(turnOffAmpMessage);
       this.#midiOutput.send(turnOnCSMessage);
+
+      /*
+        If we just change the mode, e.g. from insert to monitor, we don't
+        change the stack index. If we actually create a new channel strip, we
+        need to raise the stack index of all other channel strips.
+      */
+
+      const currentState = this.fxState[channelIndex];
+      const currentType = currentState?.type;
+
+      let stackIndex;
+
+      if (currentType !== "channel-strip") {
+        // new channel strip item in the stack, raise all stack indexes
+        this.fxState.forEach((fx, i) => {
+          if (fx.type === "channel-strip") {
+            this.fxState[i].stackIndex++;
+          }
+        });
+
+        stackIndex = 0;
+      } else {
+        stackIndex = this.fxState[channelIndex].stackIndex;
+      }
+
       this.fxState[channelIndex] = {
         type,
         mode,
+        stackIndex,
       };
     } else if (type === "amp") {
+      // TODO: refresh stack indexes if channel strip is removed
       this.#midiOutput.send(turnOffCSMessage);
       this.#midiOutput.send(turnOnAmpMessage);
       this.fxState[channelIndex] = {
@@ -225,7 +260,7 @@ export default class UR44 {
     return this.vuValues[channelId];
   };
 
-  updateParamValue(paramName, value) {
+  updateParamValue(paramName, value, stackIndex) {
     if (!this.#midiOutput || !this.params) {
       throw new Error("Controller not initialized!");
     }
@@ -253,7 +288,11 @@ export default class UR44 {
 
     // Check if we need to provide an input channel
     let channelIndexes;
-    if (param.channel.includes("+")) {
+
+    /* If the device expects a stack index, the caller must provide it */
+    if (param.channel === "stack") {
+      channelIndexes = [stackIndex];
+    } else if (param.channel.includes("+")) {
       channelIndexes = param.channel.split("+").map((c) => parseInt(c.trim()));
     } else {
       channelIndexes = [parseInt(param.channel)];
@@ -265,7 +304,7 @@ export default class UR44 {
 
     for (const channelIndex of channelIndexes) {
       console.log(
-        "updateParamValue", paramName, value, channelIndex,
+        `updateParamValue ${paramName} for ch.index ${channelIndex} to value ${value}, stack index ${stackIndex}`,
       );
       this.#sendChangeParameterValue(
         param.paramNumber, value, channelIndex,
@@ -605,15 +644,22 @@ export default class UR44 {
       }
 
       const getFxState = (csInsOn, csMonOn, ampInsOn, ampMonOn) => {
-        if (csInsOn === 1) {
+        /*
+          If channel strip is enabled for a channel, we will receive a
+          stack index greater than zero. This stack index must be used
+          if the parameters of the channel strip are set.
+        */
+        if (csInsOn > 0) {
           return {
             type: "channel-strip",
             mode: "insert",
+            stackIndex: csInsOn - 1,
           };
-        } else if (csMonOn === 1) {
+        } else if (csMonOn > 0) {
           return {
             type: "channel-strip",
             mode: "monitor",
+            stackIndex: csMonOn - 1,
           };
         } else if (ampInsOn === 1) {
           return {

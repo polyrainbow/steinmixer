@@ -475,6 +475,10 @@
     gap: 1em;
     font-size: large;
     font-family: sans-serif;
+
+    h2, h3, h4 {
+      margin: 0;
+    }
   }
   
   .setting {

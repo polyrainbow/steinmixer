@@ -1,12 +1,322 @@
 import UR44, { AMP_TYPES } from "../devices/UR44.js";
 import { html, render } from "../lit.js";
 
-const getChannelStripTemplate = (channelTitle) => {
+const getChannelStripTemplate = (channelIndex, device) => {
+  const deviceSettings = device.settings;
+  const channelTitle = UR44.INPUT_CHANNEL_TITLES[channelIndex];
+  const stackIndex = device.fxState[channelIndex].stackIndex;
+
   return html`
     <div class="channel-fx-panel">
       <h2>${channelTitle}: Channel strip</h2>
-      <div class="settings">
-        Not yet implemented
+      <div class="settings-group">
+        <div class="settings">
+          <h3>Compressor</h3>
+          <label>
+            Attack
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripCompAttack"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripCompAttack",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+          <label>
+            Release
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripCompRelease"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripCompRelease",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+          <label>
+            Ratio
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripCompRatio"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripCompRatio",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+          <label>
+            Knee
+            <input
+              type="range"
+              min="0"
+              max="2"
+              value="${deviceSettings["ChannelStripCompKnee"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripCompKnee",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+        </div>
+        <div class="settings">
+          <h3>Sidechain</h3>
+          <label>
+            Q
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripCompSideChQ"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripCompSideChQ",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+          <label>
+            F
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripCompSideChFreq"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripCompSideChFreq",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+          <label>
+            G
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripCompSideChGain"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripCompSideChGain",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+          <label>
+            Drive
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripCompDrive"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripCompDrive",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+        </div>
+        <div class="settings">
+          <h3>Equalizer</h3>
+          <h4>Low</h4>
+          <label>
+            Frequency
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripEQLowFreq"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripEQLowFreq",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+          <label>
+            Gain
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripEQLowGain"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripEQLowGain",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+        </div>
+        <div class="settings">
+          <h4>Mid</h4>
+          <label>
+            Q
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripEQMidQ"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripEQMidQ",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+          <label>
+            Frequency
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripEQMidFreq"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripEQMidFreq",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+          <label>
+            Gain
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripEQMidGain"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripEQMidGain",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+        </div>
+        <div class="settings">
+          <h4>High</h4>
+          <label>
+            Frequency
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripEQHighFreq"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripEQHighFreq",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+          <label>
+            Gain
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripEQHighGain"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripEQHighGain",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+        </div>
+        <div class="settings">
+          <label>
+            Total Gain
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripTotalGain"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripTotalGain",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+          <label>
+            Morphing
+            <input
+              type="range"
+              min="0"
+              max="64"
+              value="${deviceSettings["ChannelStripMorphing"]}"
+              @change=${(e) => {
+                const value = e.target.value;
+                device.updateParamValue(
+                  "ChannelStripMorphing",
+                  parseInt(value),
+                  stackIndex,
+                );
+              }}
+            >
+          </label>
+        </div>
       </div>
     </div>
   `;
@@ -505,7 +815,7 @@ const getFXTemplate = (device, channelIndex) => {
       device,
     );
   } else if (type === "channel-strip") {
-    return getChannelStripTemplate(channelTitle);
+    return getChannelStripTemplate(channelIndex, device);
   } else {
     throw new Error(
       "Unknown FX type: " + type,
