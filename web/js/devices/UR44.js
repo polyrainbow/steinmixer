@@ -728,6 +728,17 @@ export default class UR44 {
                   ? message[3281] + 128
                   : message[3281]
               ),
+            ratio: message[3289],
+            knee: message[3294],
+            sidechainQ: message[3321],
+            sidechainF: message[3307],
+            sidechainG: message[3312] === 1
+              ? message[3313] + 256
+              : (
+                (message[3317] >>> 3) % 2 === 1
+                  ? message[3313] + 128
+                  : message[3313]
+              ),
           },
           {
             attack: message[3273] === 1
@@ -743,6 +754,17 @@ export default class UR44 {
                 (message[3285] >>> 1) % 2 === 1
                   ? message[3283] + 128
                   : message[3283]
+              ),
+            ratio: message[3290],
+            knee: message[3295],
+            sidechainQ: message[3322],
+            sidechainF: message[3308],
+            sidechainG: message[3314] === 1
+              ? message[3315] + 256
+              : (
+                (message[3317] >>> 1) % 2 === 1
+                  ? message[3315] + 128
+                  : message[3315]
               ),
           },
           {
@@ -760,6 +782,17 @@ export default class UR44 {
                   ? message[3286] + 128
                   : message[3286]
               ),
+            ratio: message[3291],
+            knee: message[3296],
+            sidechainQ: message[3323],
+            sidechainF: message[3310],
+            sidechainG: message[3316] === 1
+              ? message[3318] + 256
+              : (
+                (message[3325] >>> 6) % 2 === 1
+                  ? message[3318] + 128
+                  : message[3318]
+              ),
           },
           {
             attack: message[3278] === 1
@@ -775,6 +808,17 @@ export default class UR44 {
                 (message[3293] >>> 4) % 2 === 1
                   ? message[3288] + 128
                   : message[3288]
+              ),
+            ratio: message[3292],
+            knee: message[3297],
+            sidechainQ: message[3324],
+            sidechainF: message[3311],
+            sidechainG: message[3319] === 1
+              ? message[3320] + 256
+              : (
+                (message[3325] >>> 4) % 2 === 1
+                  ? message[3320] + 128
+                  : message[3320]
               ),
           },
         ],

@@ -52,7 +52,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
               type="range"
               min="0"
               max="120"
-              value="${deviceSettings["ChannelStripCompRatio"]}"
+              value="${device.channelStripSettings[stackIndex].ratio}"
               @change=${(e) => {
                 const value = e.target.value;
                 device.updateParamValue(
@@ -69,7 +69,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
               type="range"
               min="0"
               max="2"
-              value="${deviceSettings["ChannelStripCompKnee"]}"
+              value="${device.channelStripSettings[stackIndex].knee}"
               @change=${(e) => {
                 const value = e.target.value;
                 device.updateParamValue(
@@ -89,7 +89,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
               type="range"
               min="0"
               max="60"
-              value="${deviceSettings["ChannelStripCompSideChQ"]}"
+              value="${device.channelStripSettings[stackIndex].sidechainQ}"
               @change=${(e) => {
                 const value = e.target.value;
                 device.updateParamValue(
@@ -106,7 +106,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
               type="range"
               min="4"
               max="124"
-              value="${deviceSettings["ChannelStripCompSideChFreq"]}"
+              value="${device.channelStripSettings[stackIndex].sidechainF}"
               @change=${(e) => {
                 const value = e.target.value;
                 device.updateParamValue(
@@ -123,7 +123,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
               type="range"
               min="0"
               max="360"
-              value="${deviceSettings["ChannelStripCompSideChGain"]}"
+              value="${device.channelStripSettings[stackIndex].sidechainG}"
               @change=${(e) => {
                 const value = e.target.value;
                 device.updateParamValue(
