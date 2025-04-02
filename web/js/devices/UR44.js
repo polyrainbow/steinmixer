@@ -739,6 +739,17 @@ export default class UR44 {
                   ? message[3313] + 128
                   : message[3313]
               ),
+            lowFreq: message[3362],
+            drive: (message[3269] >>> 2) % 2 === 1
+              ? message[3266] + 128
+              : message[3266],
+            lowGain: message[3367] === 1
+              ? message[3368] + 256
+              : (
+                (message[3373] >>> 4) % 2 === 1
+                  ? message[3368] + 128
+                  : message[3368]
+              ),
           },
           {
             attack: message[3273] === 1
@@ -765,6 +776,17 @@ export default class UR44 {
                 (message[3317] >>> 1) % 2 === 1
                   ? message[3315] + 128
                   : message[3315]
+              ),
+            lowFreq: message[3363],
+            drive: (message[3269] >>> 1) % 2 === 1
+              ? message[3267] + 128
+              : message[3267],
+            lowGain: message[3369] === 1
+              ? message[3370] + 256
+              : (
+                (message[3373] >>> 2) % 2 === 1
+                  ? message[3370] + 128
+                  : message[3370]
               ),
           },
           {
@@ -793,6 +815,17 @@ export default class UR44 {
                   ? message[3318] + 128
                   : message[3318]
               ),
+            lowFreq: message[3364],
+            drive: message[3269] % 2 === 1
+              ? message[3268] + 128
+              : message[3268],
+            lowGain: message[3371] === 1
+              ? message[3372] + 256
+              : (
+                message[3373] % 2 === 1
+                  ? message[3372] + 128
+                  : message[3372]
+              ),
           },
           {
             attack: message[3278] === 1
@@ -819,6 +852,17 @@ export default class UR44 {
                 (message[3325] >>> 4) % 2 === 1
                   ? message[3320] + 128
                   : message[3320]
+              ),
+            lowFreq: message[3366],
+            drive: (message[3277] >>> 6) % 2 === 1
+              ? message[3270] + 128
+              : message[3270],
+            lowGain: message[3374] === 1
+              ? message[3375] + 256
+              : (
+                (message[3381] >>> 5) % 2 === 1
+                  ? message[3375] + 128
+                  : message[3375]
               ),
           },
         ],

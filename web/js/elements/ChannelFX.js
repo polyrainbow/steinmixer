@@ -140,7 +140,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
               type="range"
               min="0"
               max="200"
-              value="${deviceSettings["ChannelStripCompDrive"]}"
+              value="${device.channelStripSettings[stackIndex].drive}"
               @change=${(e) => {
                 const value = e.target.value;
                 device.updateParamValue(
@@ -161,7 +161,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
               type="range"
               min="4"
               max="72"
-              value="${deviceSettings["ChannelStripEQLowFreq"]}"
+              value="${device.channelStripSettings[stackIndex].lowFreq}"
               @change=${(e) => {
                 const value = e.target.value;
                 device.updateParamValue(
@@ -178,7 +178,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
               type="range"
               min="0"
               max="360"
-              value="${deviceSettings["ChannelStripEQLowGain"]}"
+              value="${device.channelStripSettings[stackIndex].lowGain}"
               @change=${(e) => {
                 const value = e.target.value;
                 device.updateParamValue(
