@@ -123,7 +123,7 @@ ReverbInputMix,37,null,0,1,0,3500,false,0:mix1; 1:mix2
 PhantomPower01,null,null,0,1,null,3504,true,0:off; 1:on
 PhantomPower23,null,null,0,1,null,3505,true,0:off; 1:on
 
-# TODO: Fix read indexes
+# TODO: When actual params are all read correctly, replace dummy read indexes 2 with null
 ChannelStripCompEnabled,43,stack,0,1,0,2,false,0:on; 1:off
 ChannelStripCompDrive,44,stack,0,200,100,2,false,0:0.00; 100:5.00; 200:10.00
 ChannelStripCompAttack,45,stack,57,283,184,2,false,57:0.092ms; 184:4.122ms; 283:80.00ms
