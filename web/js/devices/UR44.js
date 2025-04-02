@@ -114,11 +114,13 @@ export default class UR44 {
         });
 
         this.fxState = [...messageParsed.fxState];
+        this.channelStripSettings = [...messageParsed.channelStripSettings];
 
         resolve({
           params: this.settings,
           connectionName: this.#midiOutput.name,
           fxState: this.fxState,
+          channelStripSettings: this.channelStripSettings,
         });
       } else if (messageParsed.type === "meter-update") {
         this.vuValues = messageParsed.values;
@@ -648,6 +650,7 @@ export default class UR44 {
     )) {
       return { "type": "keepalive" };
     } else if (message.length === 3520) {
+      // init message
       console.log(message);
 
       const values = {};
@@ -707,6 +710,73 @@ export default class UR44 {
           getFxState(message[975], message[982], message[988], message[995]),
           getFxState(message[976], message[983], message[990], message[996]),
           getFxState(message[977], message[984], message[991], message[998]),
+        ],
+        // channel strip settings from stack index 0 to 3
+        channelStripSettings: [
+          {
+            attack: message[3271] === 1
+              ? message[3272] + 256
+              : (
+                (message[3277] >>> 4) % 2 === 1
+                  ? message[3272] + 128
+                  : message[3272]
+              ),
+            release: message[3280] === 1
+              ? message[3281] + 256
+              : (
+                (message[3285] >>> 3) % 2 === 1
+                  ? message[3281] + 128
+                  : message[3281]
+              ),
+          },
+          {
+            attack: message[3273] === 1
+              ? message[3274] + 256
+              : (
+                (message[3277] >>> 2) % 2 === 1
+                  ? message[3274] + 128
+                  : message[3274]
+              ),
+            release: message[3282] === 1
+              ? message[3283] + 256
+              : (
+                (message[3285] >>> 1) % 2 === 1
+                  ? message[3283] + 128
+                  : message[3283]
+              ),
+          },
+          {
+            attack: message[3275] === 1
+              ? message[3276] + 256
+              : (
+                message[3277] % 2 === 1
+                  ? message[3276] + 128
+                  : message[3276]
+              ),
+            release: message[3284] === 1
+              ? message[3286] + 256
+              : (
+                (message[3293] >>> 6) % 2 === 1
+                  ? message[3286] + 128
+                  : message[3286]
+              ),
+          },
+          {
+            attack: message[3278] === 1
+              ? message[3279] + 256
+              : (
+                (message[3285] >>> 5) % 2 === 1
+                  ? message[3279] + 128
+                  : message[3279]
+              ),
+            release: message[3287] === 1
+              ? message[3288] + 256
+              : (
+                (message[3293] >>> 4) % 2 === 1
+                  ? message[3288] + 128
+                  : message[3288]
+              ),
+          },
         ],
       };
     }

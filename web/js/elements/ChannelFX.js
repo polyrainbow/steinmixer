@@ -18,7 +18,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
               type="range"
               min="57"
               max="283"
-              value="${deviceSettings["ChannelStripCompAttack"]}"
+              value="${device.channelStripSettings[stackIndex].attack}"
               @change=${(e) => {
                 const value = e.target.value;
                 device.updateParamValue(
@@ -35,7 +35,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
               type="range"
               min="24"
               max="300"
-              value="${deviceSettings["ChannelStripCompRelease"]}"
+              value="${device.channelStripSettings[stackIndex].release}"
               @change=${(e) => {
                 const value = e.target.value;
                 device.updateParamValue(
