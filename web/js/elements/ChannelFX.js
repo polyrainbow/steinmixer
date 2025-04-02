@@ -16,8 +16,8 @@ const getChannelStripTemplate = (channelIndex, device) => {
             Attack
             <input
               type="range"
-              min="0"
-              max="64"
+              min="57"
+              max="283"
               value="${deviceSettings["ChannelStripCompAttack"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -33,8 +33,8 @@ const getChannelStripTemplate = (channelIndex, device) => {
             Release
             <input
               type="range"
-              min="0"
-              max="64"
+              min="24"
+              max="300"
               value="${deviceSettings["ChannelStripCompRelease"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -51,7 +51,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
             <input
               type="range"
               min="0"
-              max="64"
+              max="120"
               value="${deviceSettings["ChannelStripCompRatio"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -88,7 +88,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
             <input
               type="range"
               min="0"
-              max="64"
+              max="60"
               value="${deviceSettings["ChannelStripCompSideChQ"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -104,8 +104,8 @@ const getChannelStripTemplate = (channelIndex, device) => {
             F
             <input
               type="range"
-              min="0"
-              max="64"
+              min="4"
+              max="124"
               value="${deviceSettings["ChannelStripCompSideChFreq"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -122,7 +122,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
             <input
               type="range"
               min="0"
-              max="64"
+              max="360"
               value="${deviceSettings["ChannelStripCompSideChGain"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -139,7 +139,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
             <input
               type="range"
               min="0"
-              max="64"
+              max="200"
               value="${deviceSettings["ChannelStripCompDrive"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -159,8 +159,8 @@ const getChannelStripTemplate = (channelIndex, device) => {
             Frequency
             <input
               type="range"
-              min="0"
-              max="64"
+              min="4"
+              max="72"
               value="${deviceSettings["ChannelStripEQLowFreq"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -177,7 +177,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
             <input
               type="range"
               min="0"
-              max="64"
+              max="360"
               value="${deviceSettings["ChannelStripEQLowGain"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -197,7 +197,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
             <input
               type="range"
               min="0"
-              max="64"
+              max="60"
               value="${deviceSettings["ChannelStripEQMidQ"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -213,8 +213,8 @@ const getChannelStripTemplate = (channelIndex, device) => {
             Frequency
             <input
               type="range"
-              min="0"
-              max="64"
+              min="4"
+              max="72"
               value="${deviceSettings["ChannelStripEQMidFreq"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -231,7 +231,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
             <input
               type="range"
               min="0"
-              max="64"
+              max="360"
               value="${deviceSettings["ChannelStripEQMidGain"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -250,8 +250,8 @@ const getChannelStripTemplate = (channelIndex, device) => {
             Frequency
             <input
               type="range"
-              min="0"
-              max="64"
+              min="60"
+              max="124"
               value="${deviceSettings["ChannelStripEQHighFreq"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -268,7 +268,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
             <input
               type="range"
               min="0"
-              max="64"
+              max="360"
               value="${deviceSettings["ChannelStripEQHighGain"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -287,7 +287,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
             <input
               type="range"
               min="0"
-              max="64"
+              max="360"
               value="${deviceSettings["ChannelStripTotalGain"]}"
               @change=${(e) => {
                 const value = e.target.value;
@@ -304,7 +304,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
             <input
               type="range"
               min="0"
-              max="64"
+              max="200"
               value="${deviceSettings["ChannelStripMorphing"]}"
               @change=${(e) => {
                 const value = e.target.value;
