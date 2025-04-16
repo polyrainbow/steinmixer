@@ -767,6 +767,13 @@ export default class UR44 {
                   ? message[3336] + 128
                   : message[3336]
               ),
+            totalGain: message[3376] === 1
+              ? message[3377] + 256
+              : (
+                (message[3381] >>> 3) % 2 === 1
+                  ? message[3377] + 128
+                  : message[3377]
+              ),
           },
           {
             attack: message[3273] === 1
@@ -821,6 +828,13 @@ export default class UR44 {
                 (message[3341] >>> 2) % 2 === 1
                   ? message[3338] + 128
                   : message[3338]
+              ),
+            totalGain: message[3378] === 1
+              ? message[3379] + 256
+              : (
+                (message[3381] >>> 1) % 2 === 1
+                  ? message[3379] + 128
+                  : message[3379]
               ),
           },
           {
@@ -877,6 +891,13 @@ export default class UR44 {
                   ? message[3340] + 128
                   : message[3340]
               ),
+            totalGain: message[3380] === 1
+              ? message[3382] + 256
+              : (
+                (message[3389] >>> 6) % 2 === 1
+                  ? message[3382] + 128
+                  : message[3382]
+              ),
           },
           {
             attack: message[3278] === 1
@@ -931,6 +952,13 @@ export default class UR44 {
                 message[3349] % 5 === 1
                   ? message[3343] + 128
                   : message[3343]
+              ),
+            totalGain: message[3383] === 1
+              ? message[3384] + 256
+              : (
+                (message[3389] >>> 4) % 2 === 1
+                  ? message[3384] + 128
+                  : message[3384]
               ),
           },
         ],
