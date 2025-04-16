@@ -36,9 +36,6 @@ models to test with. However, it should be straight-forward to adapt this tool.
 - Stereo linking of channels
 - Reverb
 - Guitar amp emulations
-
-❌ What is not (yet) possible:
-
 - Channel strip effects (compressor, EQ)
 
 ✨ Advantages of Steinmixer over the original:

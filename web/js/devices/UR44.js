@@ -114,11 +114,13 @@ export default class UR44 {
         });
 
         this.fxState = [...messageParsed.fxState];
+        this.channelStripSettings = [...messageParsed.channelStripSettings];
 
         resolve({
           params: this.settings,
           connectionName: this.#midiOutput.name,
           fxState: this.fxState,
+          channelStripSettings: this.channelStripSettings,
         });
       } else if (messageParsed.type === "meter-update") {
         this.vuValues = messageParsed.values;
@@ -163,8 +165,13 @@ export default class UR44 {
     const v3 = (v32 >> 7 * 3) & 0x7F;
     const v4 = (v32 >> 7 * 4) & 0x7F;
     const message = [
-      0xF0, 0x43, 0x10, 0x3E, 0x14, 0x01, 0x01, 0x00,
-      p1, p0, 0x00, 0x00, channelIndex, v4, v3, v2, v1, v0, 0xF7,
+      0xF0, 0x43, 0x10,
+      0x3E, 0x14, 0x01,
+      0x01, 0x00, p1,
+      p0, 0x00, 0x00,
+      channelIndex, v4, v3,
+      v2, v1, v0,
+      0xF7,
     ];
     this.#midiOutput.send(message);
   };
@@ -196,19 +203,68 @@ export default class UR44 {
     if (type === "off") {
       this.#midiOutput.send(turnOffCSMessage);
       this.#midiOutput.send(turnOffAmpMessage);
+
+      // refresh all stack indexes if channel strip is removed
+      if (this.fxState[channelIndex].type === "channel-strip") {
+        const stackIndex = this.fxState[channelIndex].stackIndex;
+        this.fxState.forEach((fx, i) => {
+          if (fx.type === "channel-strip" && fx.stackIndex > stackIndex) {
+            this.fxState[i].stackIndex--;
+          }
+        });
+      }
+
       this.fxState[channelIndex] = {
         type: "off",
       };
+
     } else if (type === "channel-strip") {
       this.#midiOutput.send(turnOffAmpMessage);
       this.#midiOutput.send(turnOnCSMessage);
+
+      /*
+        If we just change the mode, e.g. from insert to monitor, we don't
+        change the stack index. If we actually create a new channel strip, we
+        need to raise the stack index of all other channel strips.
+      */
+
+      const currentState = this.fxState[channelIndex];
+      const currentType = currentState?.type;
+
+      let stackIndex;
+
+      if (currentType !== "channel-strip") {
+        // new channel strip item in the stack, raise all stack indexes
+        this.fxState.forEach((fx, i) => {
+          if (fx.type === "channel-strip") {
+            this.fxState[i].stackIndex++;
+          }
+        });
+
+        stackIndex = 0;
+      } else {
+        stackIndex = this.fxState[channelIndex].stackIndex;
+      }
+
       this.fxState[channelIndex] = {
         type,
         mode,
+        stackIndex,
       };
     } else if (type === "amp") {
       this.#midiOutput.send(turnOffCSMessage);
       this.#midiOutput.send(turnOnAmpMessage);
+
+      // refresh all stack indexes if channel strip is removed
+      if (this.fxState[channelIndex].type === "channel-strip") {
+        const stackIndex = this.fxState[channelIndex].stackIndex;
+        this.fxState.forEach((fx, i) => {
+          if (fx.type === "channel-strip" && fx.stackIndex > stackIndex) {
+            this.fxState[i].stackIndex--;
+          }
+        });
+      }
+
       this.fxState[channelIndex] = {
         type,
         mode,
@@ -225,7 +281,7 @@ export default class UR44 {
     return this.vuValues[channelId];
   };
 
-  updateParamValue(paramName, value) {
+  updateParamValue(paramName, value, stackIndex) {
     if (!this.#midiOutput || !this.params) {
       throw new Error("Controller not initialized!");
     }
@@ -253,7 +309,11 @@ export default class UR44 {
 
     // Check if we need to provide an input channel
     let channelIndexes;
-    if (param.channel.includes("+")) {
+
+    /* If the device expects a stack index, the caller must provide it */
+    if (param.channel === "stack") {
+      channelIndexes = [stackIndex];
+    } else if (param.channel.includes("+")) {
       channelIndexes = param.channel.split("+").map((c) => parseInt(c.trim()));
     } else {
       channelIndexes = [parseInt(param.channel)];
@@ -265,7 +325,7 @@ export default class UR44 {
 
     for (const channelIndex of channelIndexes) {
       console.log(
-        "updateParamValue", paramName, value, channelIndex,
+        `updateParamValue ${paramName} for ch.index ${channelIndex} to value ${value}, stack index ${stackIndex}`,
       );
       this.#sendChangeParameterValue(
         param.paramNumber, value, channelIndex,
@@ -590,6 +650,7 @@ export default class UR44 {
     )) {
       return { "type": "keepalive" };
     } else if (message.length === 3520) {
+      // init message
       console.log(message);
 
       const values = {};
@@ -605,15 +666,22 @@ export default class UR44 {
       }
 
       const getFxState = (csInsOn, csMonOn, ampInsOn, ampMonOn) => {
-        if (csInsOn === 1) {
+        /*
+          If channel strip is enabled for a channel, we will receive a
+          stack index greater than zero. This stack index must be used
+          if the parameters of the channel strip are set.
+        */
+        if (csInsOn > 0) {
           return {
             type: "channel-strip",
             mode: "insert",
+            stackIndex: csInsOn - 1,
           };
-        } else if (csMonOn === 1) {
+        } else if (csMonOn > 0) {
           return {
             type: "channel-strip",
             mode: "monitor",
+            stackIndex: csMonOn - 1,
           };
         } else if (ampInsOn === 1) {
           return {
@@ -642,6 +710,257 @@ export default class UR44 {
           getFxState(message[975], message[982], message[988], message[995]),
           getFxState(message[976], message[983], message[990], message[996]),
           getFxState(message[977], message[984], message[991], message[998]),
+        ],
+        // channel strip settings from stack index 0 to 3
+        channelStripSettings: [
+          {
+            attack: message[3271] === 1
+              ? message[3272] + 256
+              : (
+                (message[3277] >>> 4) % 2 === 1
+                  ? message[3272] + 128
+                  : message[3272]
+              ),
+            release: message[3280] === 1
+              ? message[3281] + 256
+              : (
+                (message[3285] >>> 3) % 2 === 1
+                  ? message[3281] + 128
+                  : message[3281]
+              ),
+            ratio: message[3289],
+            knee: message[3294],
+            sidechainQ: message[3321],
+            sidechainF: message[3307],
+            sidechainG: message[3312] === 1
+              ? message[3313] + 256
+              : (
+                (message[3317] >>> 3) % 2 === 1
+                  ? message[3313] + 128
+                  : message[3313]
+              ),
+            lowFreq: message[3362],
+            drive: (message[3269] >>> 2) % 2 === 1
+              ? message[3266] + 128
+              : message[3266],
+            lowGain: message[3367] === 1
+              ? message[3368] + 256
+              : (
+                (message[3373] >>> 4) % 2 === 1
+                  ? message[3368] + 128
+                  : message[3368]
+              ),
+            midQ: message[3358],
+            midFreq: message[3344],
+            midGain: message[3348] === 1
+              ? message[3350] + 256
+              : (
+                (message[3357] >>> 6) % 2 === 1
+                  ? message[3350] + 128
+                  : message[3350]
+              ),
+            highFreq: message[3330],
+            highGain: message[3335] === 1
+              ? message[3336] + 256
+              : (
+                (message[3341] >>> 4) % 2 === 1
+                  ? message[3336] + 128
+                  : message[3336]
+              ),
+            totalGain: message[3376] === 1
+              ? message[3377] + 256
+              : (
+                (message[3381] >>> 3) % 2 === 1
+                  ? message[3377] + 128
+                  : message[3377]
+              ),
+          },
+          {
+            attack: message[3273] === 1
+              ? message[3274] + 256
+              : (
+                (message[3277] >>> 2) % 2 === 1
+                  ? message[3274] + 128
+                  : message[3274]
+              ),
+            release: message[3282] === 1
+              ? message[3283] + 256
+              : (
+                (message[3285] >>> 1) % 2 === 1
+                  ? message[3283] + 128
+                  : message[3283]
+              ),
+            ratio: message[3290],
+            knee: message[3295],
+            sidechainQ: message[3322],
+            sidechainF: message[3308],
+            sidechainG: message[3314] === 1
+              ? message[3315] + 256
+              : (
+                (message[3317] >>> 1) % 2 === 1
+                  ? message[3315] + 128
+                  : message[3315]
+              ),
+            lowFreq: message[3363],
+            drive: (message[3269] >>> 1) % 2 === 1
+              ? message[3267] + 128
+              : message[3267],
+            lowGain: message[3369] === 1
+              ? message[3370] + 256
+              : (
+                (message[3373] >>> 2) % 2 === 1
+                  ? message[3370] + 128
+                  : message[3370]
+              ),
+            midQ: message[3359],
+            midFreq: message[3345],
+            midGain: message[3351] === 1
+              ? message[3352] + 256
+              : (
+                (message[3357] >>> 4) % 2 === 1
+                  ? message[3352] + 128
+                  : message[3352]
+              ),
+            highFreq: message[3331],
+            highGain: message[3337] === 1
+              ? message[3338] + 256
+              : (
+                (message[3341] >>> 2) % 2 === 1
+                  ? message[3338] + 128
+                  : message[3338]
+              ),
+            totalGain: message[3378] === 1
+              ? message[3379] + 256
+              : (
+                (message[3381] >>> 1) % 2 === 1
+                  ? message[3379] + 128
+                  : message[3379]
+              ),
+          },
+          {
+            attack: message[3275] === 1
+              ? message[3276] + 256
+              : (
+                message[3277] % 2 === 1
+                  ? message[3276] + 128
+                  : message[3276]
+              ),
+            release: message[3284] === 1
+              ? message[3286] + 256
+              : (
+                (message[3293] >>> 6) % 2 === 1
+                  ? message[3286] + 128
+                  : message[3286]
+              ),
+            ratio: message[3291],
+            knee: message[3296],
+            sidechainQ: message[3323],
+            sidechainF: message[3310],
+            sidechainG: message[3316] === 1
+              ? message[3318] + 256
+              : (
+                (message[3325] >>> 6) % 2 === 1
+                  ? message[3318] + 128
+                  : message[3318]
+              ),
+            lowFreq: message[3364],
+            drive: message[3269] % 2 === 1
+              ? message[3268] + 128
+              : message[3268],
+            lowGain: message[3371] === 1
+              ? message[3372] + 256
+              : (
+                message[3373] % 2 === 1
+                  ? message[3372] + 128
+                  : message[3372]
+              ),
+            midQ: message[3360],
+            midFreq: message[3346],
+            midGain: message[3353] === 1
+              ? message[3354] + 256
+              : (
+                (message[3357] >>> 2) % 2 === 1
+                  ? message[3354] + 128
+                  : message[3354]
+              ),
+            highFreq: message[3332],
+            highGain: message[3339] === 1
+              ? message[3340] + 256
+              : (
+                message[3341] % 2 === 1
+                  ? message[3340] + 128
+                  : message[3340]
+              ),
+            totalGain: message[3380] === 1
+              ? message[3382] + 256
+              : (
+                (message[3389] >>> 6) % 2 === 1
+                  ? message[3382] + 128
+                  : message[3382]
+              ),
+          },
+          {
+            attack: message[3278] === 1
+              ? message[3279] + 256
+              : (
+                (message[3285] >>> 5) % 2 === 1
+                  ? message[3279] + 128
+                  : message[3279]
+              ),
+            release: message[3287] === 1
+              ? message[3288] + 256
+              : (
+                (message[3293] >>> 4) % 2 === 1
+                  ? message[3288] + 128
+                  : message[3288]
+              ),
+            ratio: message[3292],
+            knee: message[3297],
+            sidechainQ: message[3324],
+            sidechainF: message[3311],
+            sidechainG: message[3319] === 1
+              ? message[3320] + 256
+              : (
+                (message[3325] >>> 4) % 2 === 1
+                  ? message[3320] + 128
+                  : message[3320]
+              ),
+            lowFreq: message[3366],
+            drive: (message[3277] >>> 6) % 2 === 1
+              ? message[3270] + 128
+              : message[3270],
+            lowGain: message[3374] === 1
+              ? message[3375] + 256
+              : (
+                (message[3381] >>> 5) % 2 === 1
+                  ? message[3375] + 128
+                  : message[3375]
+              ),
+            midQ: message[3361],
+            midFreq: message[3347],
+            midGain: message[3355] === 1
+              ? message[3356] + 256
+              : (
+                message[3357] % 2 === 1
+                  ? message[3356] + 128
+                  : message[3356]
+              ),
+            highFreq: message[3334],
+            highGain: message[3342] === 1
+              ? message[3343] + 256
+              : (
+                message[3349] % 5 === 1
+                  ? message[3343] + 128
+                  : message[3343]
+              ),
+            totalGain: message[3383] === 1
+              ? message[3384] + 256
+              : (
+                (message[3389] >>> 4) % 2 === 1
+                  ? message[3384] + 128
+                  : message[3384]
+              ),
+          },
         ],
       };
     }

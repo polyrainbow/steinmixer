@@ -123,6 +123,28 @@ ReverbInputMix,37,null,0,1,0,3500,false,0:mix1; 1:mix2
 PhantomPower01,null,null,0,1,null,3504,true,0:off; 1:on
 PhantomPower23,null,null,0,1,null,3505,true,0:off; 1:on
 
+# TODO: When actual params are all read correctly, replace dummy read indexes 2 with null
+ChannelStripCompEnabled,43,stack,0,1,0,2,false,0:on; 1:off
+ChannelStripCompDrive,44,stack,0,200,100,2,false,0:0.00; 100:5.00; 200:10.00
+ChannelStripCompAttack,45,stack,57,283,184,2,false,57:0.092ms; 184:4.122ms; 283:80.00ms
+ChannelStripCompRelease,46,stack,24,300,159,2,false,24:9.3ms; 159:92.0ms; 300:999.0ms
+ChannelStripCompRatio,47,stack,0,120,30,2,false,0:1.00; 30:2.50; 60:4.0.0; 90:14.0; 120:inf
+ChannelStripCompKnee,48,stack,0,2,1,2,false,0:soft; 1:medium; 2:hard
+ChannelStripCompSideChEnabled,199,stack,0,1,1,2,false,0:off; 1:on
+ChannelStripCompSideChFreq,51,stack,4,124,30,2,false,4:20Hz; 30:90.0Hz; 124:20kHz
+ChannelStripCompSideChGain,52,stack,0,360,133,2,false,0:-18.0dB; 133:-4.7dB; 360:18dB
+ChannelStripCompSideChQ,53,stack,0,60,12,2,false,0:0.50; 12:1.00; 60:16
+ChannelStripMorphing,54,stack,0,200,100,2,false,0:0:00; 100:5:00; 200:10:00
+ChannelStripEQEnabled,55,stack,0,1,0,2,false,0:on; 1:off
+ChannelStripEQHighFreq,56,stack,60,124,112,2,false,60:500Hz; 112:10.0kHz; 124:20.0kHz
+ChannelStripEQHighGain,57,stack,0,360,180,2,false,0:-18dB; 180:0.0dB; 360:18dB
+ChannelStripEQMidFreq,58,stack,4,124,71,2,false,4:20Hz; 71:1.00kHz; 124:20kHz
+ChannelStripEQMidGain,59,stack,0,360,180,2,false,0:-18dB; 180:0.0dB; 360:18dB
+ChannelStripEQMidQ,60,stack,0,60,12,2,false,0:0.50; 12:1.00; 60:16
+ChannelStripEQLowFreq,61,stack,4,72,32,2,false,4:20Hz; 100.0Hz; 72:1kHz
+ChannelStripEQLowGain,62,stack,0,360,180,2,false,0:-18dB; 180:0.0dB; 360:18dB
+ChannelStripTotalGain,63,stack,0,360,180,2,false,0:-18dB; 180:0.0dB; 360:18dB
+
 AmpType,102,null,0,3,0,3406,false,0:Clean; 1:Crunch; 2:Lead; 3:Drive
 
 AmpCleanVolume,104,null,0,64,32,3408,false,
