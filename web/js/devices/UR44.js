@@ -752,6 +752,13 @@ export default class UR44 {
               ),
             midQ: message[3358],
             midFreq: message[3344],
+            midGain: message[3348] === 1
+              ? message[3350] + 256
+              : (
+                (message[3357] >>> 6) % 2 === 1
+                  ? message[3350] + 128
+                  : message[3350]
+              ),
           },
           {
             attack: message[3273] === 1
@@ -792,6 +799,13 @@ export default class UR44 {
               ),
             midQ: message[3359],
             midFreq: message[3345],
+            midGain: message[3351] === 1
+              ? message[3352] + 256
+              : (
+                (message[3357] >>> 4) % 2 === 1
+                  ? message[3352] + 128
+                  : message[3352]
+              ),
           },
           {
             attack: message[3275] === 1
@@ -832,6 +846,13 @@ export default class UR44 {
               ),
             midQ: message[3360],
             midFreq: message[3346],
+            midGain: message[3353] === 1
+              ? message[3354] + 256
+              : (
+                (message[3357] >>> 2) % 2 === 1
+                  ? message[3354] + 128
+                  : message[3354]
+              ),
           },
           {
             attack: message[3278] === 1
@@ -872,6 +893,13 @@ export default class UR44 {
               ),
             midQ: message[3361],
             midFreq: message[3347],
+            midGain: message[3355] === 1
+              ? message[3356] + 256
+              : (
+                message[3357] % 2 === 1
+                  ? message[3356] + 128
+                  : message[3356]
+              ),
           },
         ],
       };

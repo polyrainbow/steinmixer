@@ -232,7 +232,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
               type="range"
               min="0"
               max="360"
-              value="${deviceSettings["ChannelStripEQMidGain"]}"
+              value="${device.channelStripSettings[stackIndex].midGain}"
               @change=${(e) => {
                 const value = e.target.value;
                 device.updateParamValue(
