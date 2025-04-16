@@ -760,6 +760,13 @@ export default class UR44 {
                   : message[3350]
               ),
             highFreq: message[3330],
+            highGain: message[3335] === 1
+              ? message[3336] + 256
+              : (
+                (message[3341] >>> 4) % 2 === 1
+                  ? message[3336] + 128
+                  : message[3336]
+              ),
           },
           {
             attack: message[3273] === 1
@@ -808,6 +815,13 @@ export default class UR44 {
                   : message[3352]
               ),
             highFreq: message[3331],
+            highGain: message[3337] === 1
+              ? message[3338] + 256
+              : (
+                (message[3341] >>> 2) % 2 === 1
+                  ? message[3338] + 128
+                  : message[3338]
+              ),
           },
           {
             attack: message[3275] === 1
@@ -856,6 +870,13 @@ export default class UR44 {
                   : message[3354]
               ),
             highFreq: message[3332],
+            highGain: message[3339] === 1
+              ? message[3340] + 256
+              : (
+                message[3341] % 2 === 1
+                  ? message[3340] + 128
+                  : message[3340]
+              ),
           },
           {
             attack: message[3278] === 1
@@ -904,6 +925,13 @@ export default class UR44 {
                   : message[3356]
               ),
             highFreq: message[3334],
+            highGain: message[3342] === 1
+              ? message[3343] + 256
+              : (
+                message[3349] % 5 === 1
+                  ? message[3343] + 128
+                  : message[3343]
+              ),
           },
         ],
       };
