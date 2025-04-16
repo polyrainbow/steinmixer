@@ -750,6 +750,7 @@ export default class UR44 {
                   ? message[3368] + 128
                   : message[3368]
               ),
+            midQ: message[3358],
           },
           {
             attack: message[3273] === 1
@@ -788,6 +789,7 @@ export default class UR44 {
                   ? message[3370] + 128
                   : message[3370]
               ),
+            midQ: message[3359],
           },
           {
             attack: message[3275] === 1
@@ -826,6 +828,7 @@ export default class UR44 {
                   ? message[3372] + 128
                   : message[3372]
               ),
+            midQ: message[3360],
           },
           {
             attack: message[3278] === 1
@@ -864,6 +867,7 @@ export default class UR44 {
                   ? message[3375] + 128
                   : message[3375]
               ),
+            midQ: message[3361],
           },
         ],
       };
