@@ -252,7 +252,7 @@ const getChannelStripTemplate = (channelIndex, device) => {
               type="range"
               min="60"
               max="124"
-              value="${deviceSettings["ChannelStripEQHighFreq"]}"
+              value="${device.channelStripSettings[stackIndex].highFreq}"
               @change=${(e) => {
                 const value = e.target.value;
                 device.updateParamValue(

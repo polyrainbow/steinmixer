@@ -759,6 +759,7 @@ export default class UR44 {
                   ? message[3350] + 128
                   : message[3350]
               ),
+            highFreq: message[3330],
           },
           {
             attack: message[3273] === 1
@@ -806,6 +807,7 @@ export default class UR44 {
                   ? message[3352] + 128
                   : message[3352]
               ),
+            highFreq: message[3331],
           },
           {
             attack: message[3275] === 1
@@ -853,6 +855,7 @@ export default class UR44 {
                   ? message[3354] + 128
                   : message[3354]
               ),
+            highFreq: message[3332],
           },
           {
             attack: message[3278] === 1
@@ -900,6 +903,7 @@ export default class UR44 {
                   ? message[3356] + 128
                   : message[3356]
               ),
+            highFreq: message[3334],
           },
         ],
       };
