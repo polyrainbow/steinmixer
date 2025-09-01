@@ -24,7 +24,16 @@ customElements.define("app-header", class AppHeader extends HTMLElement {
         connectionName
           ? html`Connected with ${connectionName}`
           : html`Not connected`
-      }</div>`;
+      }</div>
+      ${connectionName
+        ? html`<button
+          @click=${() => {
+            this.dispatchEvent(new CustomEvent("close-session-request"));
+          }}
+        >Close Session</button>`
+        : html``
+      }
+    `;
 
     render(template, this);
   }

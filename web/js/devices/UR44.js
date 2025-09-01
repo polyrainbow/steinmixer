@@ -996,6 +996,14 @@ export default class UR44 {
 
     initMessages.forEach((m) => this.#midiOutput.send(m));
   };
+
+  closeSession() {
+    const CLOSE_MESSAGE = [
+      0xf0, 0x43, 0x30, 0x3e, 0x14, 0x02, 0x02, 0x32, 0x00, 0xf7,
+    ];
+
+    this.#midiOutput.send(CLOSE_MESSAGE);
+  };
 }
 
 

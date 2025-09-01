@@ -34,6 +34,13 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
       this.status = "ready";
       this.render();
 
+      document.querySelector("app-header")
+        .addEventListener("close-session-request", (e) => {
+          this.device.closeSession();
+          this.status = "session-closed";
+          this.render();
+        });
+
       Array.from(document.querySelectorAll("stereo-input"))
         .forEach(si => {
           si.addEventListener("link-channels", (e) => {
@@ -214,6 +221,15 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         <br>
         <button @click=${() => location.reload()}>
           Reload page to check again
+        </button>`;
+      render(template, this);
+      return;
+    } else if (this.status === "session-closed") {
+      const template
+        = html`<app-header></app-header>
+        <p>The session has been closed. To connect again, please reload the page.</p>
+        <button @click=${() => location.reload()}>
+          Reload page to connect again
         </button>`;
       render(template, this);
       return;

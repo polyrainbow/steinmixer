@@ -371,4 +371,8 @@ export default class UR44Simulator {
   getChannelIndexFromChannelId(channelId) {
     return this.constructor.INPUT_CHANNEL_IDS.indexOf(channelId);
   };
+
+  closeSession() {
+    console.log("UR44 Simulator session closed");
+  }
 }
