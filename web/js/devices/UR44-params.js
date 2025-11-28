@@ -102,7 +102,7 @@ Mix1MainPan,33,null,-16,16,0,3495,false,-16:L16; 0:C; 16:R16
 
 Phones2Output,34,null,0,1,0,3496,false,0:Mix 1; 1:Mix 2
 Loopback,100,null,0,1,0,3499,false,0:off; 1:on
-Input45Level,41,null,0,1,0,3507,false,0:+4dBu; 1:-10dBV
+Input45Level,41,2,0,1,0,3510,false,0:+4dBu; 1:-10dBV
 
 ReverbType,65,null,0,2,0,3386,false,0:Hall; 1:Room; 2:Plate
 ReverbTime,66,null,0,69,23,3387,false,0:0.289; 69:29.0; 23:2.51; 40:4.15
