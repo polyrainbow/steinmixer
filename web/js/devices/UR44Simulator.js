@@ -165,6 +165,7 @@ export default class UR44Simulator {
       {
         type: "channel-strip",
         mode: "monitor",
+        stackIndex: 0,
       },
       {
         type: "off",
@@ -174,12 +175,34 @@ export default class UR44Simulator {
       },
     ];
 
+    this.channelStripSettings = [
+      {
+        attack: 57,
+        release: 24,
+        ratio: 0,
+        knee: 0,
+        sidechainQ: 0,
+        sidechainF: 0,
+        sidechainG: 0,
+        drive: 0,
+        lowFreq: 0,
+        lowGain: 0,
+        midQ: 0,
+        midFreq: 0,
+        midGain: 0,
+        highFreq: 0,
+        highGain: 0,
+        totalGain: 0,
+      },
+    ];
+
     console.log("UR44 Simulator opened");
 
     return {
       params: this.settings,
       connectionName: "UR44 Simulator",
       fxState: this.fxState,
+      channelStripSettings: this.channelStripSettings,
     };
   }
 
