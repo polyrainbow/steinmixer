@@ -485,4 +485,79 @@
     display: flex;
     flex-direction: column;
   }
+
+  preset-panel {
+    background-color: var(--lightgrey);
+    width: fit-content;
+    padding: 1em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    .preset-save {
+      display: flex;
+      gap: 0.5em;
+
+      input[type="text"] {
+        font-size: large;
+        padding: 0.1rem 0.5rem;
+        border: 0.1rem solid var(--grey);
+        border-radius: 0;
+        min-width: 14em;
+      }
+    }
+
+    .preset-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4em;
+      max-height: 20em;
+      overflow-y: auto;
+    }
+
+    .preset-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1em;
+      padding: 0.4em 0.6em;
+      background-color: var(--white);
+      border: 0.1rem solid var(--grey);
+    }
+
+    .preset-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .preset-name {
+      font-weight: bold;
+    }
+
+    .preset-date {
+      font-size: small;
+      color: var(--grey);
+    }
+
+    .preset-actions {
+      display: flex;
+      gap: 0.3em;
+    }
+
+    .preset-empty {
+      margin: 0;
+      font-size: small;
+      color: var(--grey);
+    }
+
+    .preset-io {
+      display: flex;
+      gap: 0.5em;
+    }
+  }
 }

@@ -1,5 +1,6 @@
 import UR44Simulator from "../devices/UR44Simulator.js";
 import "./StereoInput.js";
+import "./PresetPanel.js";
 import { html, render, live } from "../lit.js";
 import UR44 from "../devices/UR44.js";
 
@@ -38,6 +39,42 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         .addEventListener("close-session-request", (e) => {
           this.device.closeSession();
           this.status = "session-closed";
+          this.render();
+        });
+
+      this.addEventListener("load-preset", (e) => {
+          const { preset } = e.detail;
+
+          // Turn off all current FX
+          for (let i = 0; i < 6; i++) {
+            if (this.device.fxState[i].type !== "off") {
+              this.device.setFX(i, "off", "monitor");
+            }
+          }
+
+          // Apply all settings (skip read-only and ChannelStrip params)
+          for (const [key, value] of Object.entries(preset.settings)) {
+            if (key === "PhantomPower01" || key === "PhantomPower23") continue;
+            if (key.startsWith("ChannelStrip")) {
+              this.device.settings[key] = value;
+              continue;
+            }
+            this.device.updateParamValue(key, value);
+          }
+
+          // Restore FX for channels that have it
+          for (let i = 0; i < preset.fxState.length; i++) {
+            const fx = preset.fxState[i];
+            if (fx.type !== "off") {
+              this.device.setFX(i, fx.type, fx.mode);
+            }
+          }
+
+          // Restore channel strip settings
+          this.device.channelStripSettings = JSON.parse(
+            JSON.stringify(preset.channelStripSettings),
+          );
+
           this.render();
         });
 
@@ -403,6 +440,11 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
     <interface-settings
       .device=${this.device}
     ></interface-settings>
+
+    <preset-panel
+      .device=${this.device}
+      active-mix=${this.activeMix}
+    ></preset-panel>
     `;
 
     render(template, this);
