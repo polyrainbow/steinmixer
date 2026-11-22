@@ -549,6 +549,39 @@
     font-size: large;
   }
 
+  master-reverb {
+    .settings {
+      flex-direction: row;
+      align-items: flex-start;
+      max-height: none;
+
+      & > fieldset {
+        max-width: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6em;
+        margin: 0;
+        padding: 0.4em 0.8em 0.8em;
+        border: 0.1rem solid var(--grey);
+
+        legend {
+          font-size: medium;
+          font-weight: bold;
+        }
+
+        & > label {
+          display: flex;
+          flex-direction: column;
+          max-width: 10rem;
+
+          .value {
+            font-size: smaller;
+          }
+        }
+      }
+    }
+  }
+
   channel-fx {
     flex-wrap: wrap;
 
