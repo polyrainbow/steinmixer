@@ -143,3 +143,49 @@ export const formatReverbFreq = (raw) => formatHz(reverbFreqToHz(raw));
 export const formatReverbRatio = (raw) => {
   return `×${reverbRatioToValue(raw).toFixed(1)}`;
 };
+
+/* ---------- graph ---------- */
+
+/*
+  Pre-delay and the times (in seconds) after which lows, mids and highs have
+  decayed by 60 dB. Lows and highs decay in reverb time × their ratio.
+*/
+export const getReverbDecay = (settings) => {
+  const time = reverbTimeToSeconds(
+    settings.ReverbType, settings.ReverbRoomSize, settings.ReverbTime,
+  );
+  return {
+    preDelay: initialDelayToMs(settings.ReverbInitialDelay) / 1000,
+    low: time * reverbRatioToValue(settings.ReverbLowRatio),
+    mid: time,
+    high: time * reverbRatioToValue(settings.ReverbHighRatio),
+  };
+};
+
+const NICE_STEPS = [1, 2, 5];
+
+/*
+  The smallest 1/2/5 * 10^n value which is at least `seconds`, and the tick
+  distance for it (5 ticks for 1 and 5, 4 for 2).
+*/
+export const getTimeAxis = (seconds) => {
+  let exponent = Math.floor(Math.log10(Math.max(seconds, 1e-3)));
+  for (;;) {
+    for (const step of NICE_STEPS) {
+      const max = step * 10 ** exponent;
+      if (max >= seconds) {
+        // round off floating point noise, e.g. 0.30000000000000004
+        const clean = (v) => parseFloat(v.toPrecision(6));
+        return { max: clean(max), tick: clean(max / (step === 2 ? 4 : 5)) };
+      }
+    }
+    exponent++;
+  }
+};
+
+// Short axis label, e.g. "200ms", "1.5s", "20s"
+export const formatSecondsShort = (seconds) => {
+  if (seconds === 0) return "0";
+  if (seconds < 1) return `${parseFloat((seconds * 1000).toPrecision(3))}ms`;
+  return `${parseFloat(seconds.toPrecision(3))}s`;
+};

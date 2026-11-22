@@ -1,5 +1,6 @@
 /*
-  Styles for <compressor-curve>, <eq-curve>, <gr-meter> and <level-meter>.
+  Styles for <compressor-curve>, <eq-curve>, <reverb-graph>, <gr-meter> and
+  <level-meter>.
   Uses the CSS variables defined in stylesheet.css (with fallbacks).
 */
 
@@ -287,4 +288,86 @@ level-meter .meter-over {
 level-meter .meter-over.active {
   color: var(--white, white);
   background: var(--red, crimson);
+}
+
+/* reverb */
+
+reverb-graph {
+  --csv-curve: var(--yellow, #ffe700);
+
+  display: block;
+  width: 100%;
+  aspect-ratio: 300 / 176;
+  background: var(--black, black);
+  border-radius: 4px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.reverb-graph-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+reverb-graph .plot-bg {
+  fill: #161616;
+}
+
+reverb-graph .grid {
+  stroke: var(--darkgrey, #3e3e3e);
+  stroke-width: 0.5;
+  shape-rendering: crispEdges;
+}
+
+reverb-graph .axis-label,
+reverb-graph .legend {
+  fill: var(--grey, grey);
+  font-family: sans-serif;
+  font-size: 8px;
+}
+
+reverb-graph .legend {
+  fill: var(--white, white);
+}
+
+reverb-graph .dry {
+  stroke: var(--white, white);
+  stroke-width: 2;
+}
+
+reverb-graph .decay {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+reverb-graph .decay-fill {
+  fill: var(--csv-curve);
+  fill-opacity: 0.12;
+}
+
+reverb-graph .decay-mid { stroke: var(--csv-curve); stroke-width: 2; }
+reverb-graph .decay-low { stroke: var(--red, crimson); }
+reverb-graph .decay-high { stroke: var(--blue-alt, rgb(0, 152, 212)); }
+
+reverb-graph .legend-mid { fill: var(--csv-curve); }
+reverb-graph .legend-low { fill: var(--red, crimson); }
+reverb-graph .legend-high { fill: var(--blue-alt, rgb(0, 152, 212)); }
+
+reverb-graph .pass-band {
+  fill: var(--csv-curve);
+  fill-opacity: 0.3;
+}
+
+reverb-graph .low-band {
+  fill: var(--red, crimson);
+  fill-opacity: 0.45;
+}
+
+reverb-graph .low-freq {
+  stroke: var(--red, crimson);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
 }

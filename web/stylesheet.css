@@ -550,6 +550,10 @@
   }
 
   master-reverb {
+    reverb-graph {
+      margin-bottom: 1em;
+    }
+
     .settings {
       flex-direction: row;
       align-items: flex-start;

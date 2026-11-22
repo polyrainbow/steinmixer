@@ -9,6 +9,7 @@ import {
   formatReverbFreq,
   formatReverbRatio,
 } from "../devices/reverbMath.js";
+import "./ReverbGraph.js";
 
 
 customElements.define("master-reverb", class extends HTMLElement {
@@ -124,6 +125,7 @@ customElements.define("master-reverb", class extends HTMLElement {
 
     const template = html`
       <h2>Reverb</h2>
+      <reverb-graph .settings=${{ ...s }}></reverb-graph>
       <section class="settings">
         <fieldset>
           <legend>Routing</legend>

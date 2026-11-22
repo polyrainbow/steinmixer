@@ -11,6 +11,9 @@ import {
   formatReverbFreq,
   formatReverbRatio,
   REVERB_TIME_MAX_INDEX,
+  getReverbDecay,
+  getTimeAxis,
+  formatSecondsShort,
 } from "./reverbMath.js";
 
 const HALL = 0;
@@ -110,5 +113,38 @@ describe("formatting", () => {
     expect(formatReverbFreq(32)).toBe("800.0 Hz");
     expect(formatReverbFreq(50)).toBe("6.30 kHz");
     expect(formatReverbRatio(12)).toBe("×1.2");
+  });
+});
+
+describe("graph helpers", () => {
+  it("computes the decay times", () => {
+    const decay = getReverbDecay({
+      ReverbType: 0,
+      ReverbRoomSize: 29,
+      ReverbTime: 69,
+      ReverbInitialDelay: 127,
+      ReverbLowRatio: 12,
+      ReverbHighRatio: 5,
+    });
+    expect(decay.preDelay).toBeCloseTo(0.2, 5);
+    expect(decay.mid).toBe(29);
+    expect(decay.low).toBeCloseTo(34.8, 5);
+    expect(decay.high).toBeCloseTo(14.5, 5);
+  });
+
+  it("finds a nice time axis", () => {
+    expect(getTimeAxis(0.3)).toEqual({ max: 0.5, tick: 0.1 });
+    expect(getTimeAxis(1)).toEqual({ max: 1, tick: 0.2 });
+    expect(getTimeAxis(1.2)).toEqual({ max: 2, tick: 0.5 });
+    expect(getTimeAxis(2.6)).toEqual({ max: 5, tick: 1 });
+    expect(getTimeAxis(73)).toEqual({ max: 100, tick: 20 });
+    expect(getTimeAxis(0)).toEqual({ max: 0.001, tick: 0.0002 });
+  });
+
+  it("formats axis labels", () => {
+    expect(formatSecondsShort(0)).toBe("0");
+    expect(formatSecondsShort(0.2)).toBe("200ms");
+    expect(formatSecondsShort(1.5)).toBe("1.5s");
+    expect(formatSecondsShort(20)).toBe("20s");
   });
 });
