@@ -26,6 +26,7 @@ customElements.define("pan-slider", class extends HTMLElement {
       const newPan = parseInt(e.target.value);
 
       this.dispatchEvent(new CustomEvent("pan", {
+        bubbles: true,
         detail: {
           pan: newPan,
           channelId,
@@ -40,6 +41,7 @@ customElements.define("pan-slider", class extends HTMLElement {
       const newPan = 0;
 
       this.dispatchEvent(new CustomEvent("pan", {
+        bubbles: true,
         detail: {
           pan: newPan,
           channelId,
@@ -58,7 +60,8 @@ customElements.define("pan-slider", class extends HTMLElement {
       .value=${live(pan)}
       @input=${handleInput}
       @dblclick=${handleDblClick}
-      title="Pan"
+      title=${this.getAttribute("label") ?? "Pan"}
+      aria-label=${this.getAttribute("label") ?? "Pan"}
     >
     <span>${pan === 0
       ? "C"

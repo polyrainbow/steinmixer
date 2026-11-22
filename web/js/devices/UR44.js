@@ -1,5 +1,27 @@
-import { arraysAreEqual } from "./utils.js";
 import UR44Params from "./UR44-params.js";
+import {
+  encodeParamChange,
+  encodeParamChangeReapply,
+  encodeParamQuery,
+  encodeDumpRequest,
+  encodeBulkDump,
+  encodeFxInsert,
+  encodeFxRemove,
+  parseMessage,
+  readString,
+  meterValueToDb,
+  fxAvailableAtSampleRateCode,
+  SAMPLE_RATES,
+  STORE_COMMAND,
+  DUMP_ADDRESS_ALL,
+  DUMP_ADDRESS_CURRENT_SCENE,
+  FX_CHANNEL_STRIP,
+  FX_GUITAR_AMP,
+} from "./UR44-protocol.js";
+import { canSetFx, getLinkPartner } from "./UR44-fx.js";
+import { PARAM_RANGES } from "./channelStripMath.js";
+
+export { canSetFx, getBudgetInUse } from "./UR44-fx.js";
 
 export const AMP_TYPES = [
   "Clean",
@@ -8,490 +30,767 @@ export const AMP_TYPES = [
   "Drive",
 ];
 
-const getMIDIDevices = async () => {
+export const STRIP_COUNT = 4;
+export const MORPH_POINTS = 9;
+export const MORPH_MAX = 120;
+
+/* ids of the morphing table, in the order used by .ssd files */
+export const MORPH_TABLE_PARAM_IDS = [
+  83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99,
+];
+const MORPH_SYSTEM_ID_PARAM = 81;
+const MORPH_SYSTEM_NAME_PARAM = 82;
+const MORPH_SYSTEM_ID_LENGTH = 4;
+const MORPH_SYSTEM_NAME_LENGTH = 256;
+const MORPH_VALUE_PARAM = 54;
+/* channelStripMath keys of the morphing table entries (ids 83..99) */
+const MORPH_TABLE_KEYS = [
+  "attack", "release", "ratio", "knee", "threshOfst", "makeupOfst",
+  "sidechainF", "sidechainG", "sidechainQ", "highFreq", "highGain", "midFreq",
+  "midGain", "midQ", "lowFreq", "lowGain", "totalGain",
+];
+
+/* the device only stores 7 bit ASCII */
+const toDeviceString = (string) => {
+  return string
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, "_");
+};
+
+/*
+  Params which the device mirrors between the two channels of a linked pair
+  (verified on the device). Phase and pan stay independent.
+*/
+const LINK_MIRRORED_PARAM_IDS = [3, 7, 8, 9, 10, 11, 12, 13, 14];
+
+/* Params which are not part of bulk dumps and have to be queried. */
+const QUERIED_PARAM_IDS = [25, 26, 27];
+
+const FX_PATCH_PARAMS = {
+  channelStripInsert: 5,
+  channelStripMonitor: 6,
+  ampInsert: 175,
+  ampMonitor: 176,
+};
+const STEREO_LINK_PARAM = 42;
+const LINK_PARAM = 0;
+const SAMPLE_RATE_PARAM = 38;
+
+const REQUEST_TIMEOUT = 3000;
+
+/*
+  Parses the parameter table. channel is one of
+    { kind: "global" }                   -> param has a single value
+    { kind: "channels", channels: [..] } -> set on all listed channels, read
+                                            from the first one
+    { kind: "stack" }                    -> one value per channel strip
+*/
+export const parseParamTable = (csv) => {
+  const params = new Map();
+  for (const line of csv.split("\n")) {
+    if (line.trim() === "" || line.startsWith("#")) continue;
+    const [
+      paramName, paramNumber, channel, min, max, defaultValue, readOnly,
+    ] = line.split(",");
+    let channelSpec;
+    if (channel === "null") {
+      channelSpec = { kind: "global" };
+    } else if (channel === "stack") {
+      channelSpec = { kind: "stack" };
+    } else {
+      channelSpec = {
+        kind: "channels",
+        channels: channel.split("+").map((c) => parseInt(c)),
+      };
+    }
+    params.set(paramName, {
+      paramNumber: parseInt(paramNumber),
+      channel: channelSpec,
+      min: parseInt(min),
+      max: parseInt(max),
+      defaultValue: parseInt(defaultValue),
+      readOnly: readOnly === "true",
+    });
+  }
+  return params;
+};
+
+const PARAMS = parseParamTable(UR44Params);
+
+const getWebMIDIPorts = async () => {
   const midi = await navigator.requestMIDIAccess({ sysex: true });
 
-  let interfaceInput;
-
-  for (const input of midi.inputs.values()) {
-    if (input.name.includes("Steinberg UR44")) {
-      interfaceInput = input;
-    }
+  // The UR44 has two MIDI ports, the second one is used for control. As the
+  // port names are localized ("Port 2", "Anschluss 2"), we use the last one.
+  let input;
+  let output;
+  for (const port of midi.inputs.values()) {
+    if (port.name.includes("Steinberg UR44")) input = port;
+  }
+  for (const port of midi.outputs.values()) {
+    if (port.name.includes("Steinberg UR44")) output = port;
   }
 
-  if (!interfaceInput) {
+  if (!input || !output) {
     throw new Error("DEVICE_NOT_FOUND");
   }
 
-  let interfaceOutput;
+  await input.open();
+  return { input, output, name: output.name };
+};
 
-  for (const output of midi.outputs.values()) {
-    if (output.name.includes("Steinberg UR44")) {
-      interfaceOutput = output;
-    }
+const createSettingsProxy = (target) => {
+  return new Proxy(target, {
+    get(obj, prop) {
+      // Promise checker should be satisfied
+      if (prop === "then") return null;
+      if (typeof prop === "symbol") return obj[prop];
+      if (typeof obj[prop] === "undefined") {
+        throw new Error("Requested unknown param: " + String(prop));
+      }
+      return obj[prop];
+    },
+    set(obj, prop, value) {
+      if (typeof obj[prop] === "undefined") {
+        throw new Error("Tried to set unknown param: " + String(prop));
+      }
+      obj[prop] = value;
+      return true;
+    },
+  });
+};
+
+const deriveFxState = (values, channelIndex) => {
+  const get = (id) => values.get(id)?.[channelIndex] ?? 0;
+  const stereoOf = (stackIndex) => {
+    return (values.get(STEREO_LINK_PARAM)?.[stackIndex] ?? 0) === 1;
+  };
+  const csIns = get(FX_PATCH_PARAMS.channelStripInsert);
+  const csMon = get(FX_PATCH_PARAMS.channelStripMonitor);
+  if (csIns > 0 || csMon > 0) {
+    const stackIndex = (csIns || csMon) - 1;
+    return {
+      type: "channel-strip",
+      mode: csIns > 0 ? "insert" : "monitor",
+      stackIndex,
+      stereo: stereoOf(stackIndex),
+    };
   }
-
-  if (!interfaceOutput) {
-    throw new Error("DEVICE_NOT_FOUND");
+  if (get(FX_PATCH_PARAMS.ampInsert) > 0) {
+    return { type: "amp", mode: "insert" };
   }
+  if (get(FX_PATCH_PARAMS.ampMonitor) > 0) {
+    return { type: "amp", mode: "monitor" };
+  }
+  return { type: "off" };
+};
 
-  return [interfaceInput, interfaceOutput];
+/*
+  Value of a morphing table entry at a morph position, the same way the
+  device and dspMixFx interpolate: 9 points, 15 steps apart.
+*/
+export const interpolateMorph = (points, morphValue) => {
+  const pos = Math.min(MORPH_MAX, Math.max(0, morphValue)) / 15;
+  const i = Math.min(MORPH_POINTS - 1, Math.floor(pos));
+  const j = Math.min(MORPH_POINTS - 1, i + 1);
+  return Math.trunc(points[i] + (points[j] - points[i]) * (pos - i));
 };
 
 export default class UR44 {
-  #midiOutput;
+  #ports;
+  #portProvider;
+  #messageHandler;
+  #pendingDumps = [];
+  #pendingAcks = [];
+  #pendingQueries = new Map();
+  #lastDump = null;
+  #morphRefreshTimer = null;
+  #changeSeq = 0;
+  #localChanges = [];
+  #fxQueue = Promise.resolve();
   vuValues;
+  params = PARAMS;
+  settings;
+  channelStripSettings = [];
+  sweetSpots = [];
+  morphTable = [];
+  fxState = [];
 
-  async getParams() {
-    const lines = UR44Params.split("\n");
-    const params = new Map();
-    for (const line of lines) {
-      if (line.trim() === "" || line.startsWith("#")) {
-        continue;
-      }
-
-      const [
-        paramName,
-        paramNumber,
-        channel,
-        min,
-        max,
-        defaultValue,
-        initMessageIndex,
-        readOnly,
-      ] = line.split(",");
-      params.set(paramName, {
-        paramNumber,
-        channel,
-        min: parseInt(min),
-        max: parseInt(max),
-        defaultValue: parseInt(defaultValue),
-        initMessageIndex: parseInt(initMessageIndex),
-        readOnly: readOnly === "true",
-      });
-
-      this.params = params;
-    }
+  constructor(portProvider = getWebMIDIPorts) {
+    this.#portProvider = portProvider;
   }
 
   async open(messageHandler) {
-    const [midiInput, midiOutput] = await getMIDIDevices();
-    this.#midiOutput = midiOutput;
-    console.log("Controller initialized");
+    this.#messageHandler = messageHandler;
+    this.#ports = await this.#portProvider();
+    this.#ports.input.onmidimessage = (e) => this.#handleMessage(e.data);
 
-    await midiInput.open();
     this.sendInitMessages();
+    await this.refresh();
+    await this.#queryParams(QUERIED_PARAM_IDS);
 
-    await this.getParams();
-
-    const { promise, resolve } = Promise.withResolvers();
-
-    midiInput.onmidimessage = (message) => {
-      const messageParsed = this.parseSysExMessage(message.data);
-      if (messageParsed.type === "unknown") {
-        console.log("Unknown message received", messageParsed.raw);
-      } else if (messageParsed.type === "init") {
-        this.settings = new Proxy(messageParsed.values,  {
-          get(target, prop, receiver) {
-            // Promise checker should be satisfied
-            if (prop === "then") {
-              return null;
-            }
-
-            if (typeof target[prop] === "undefined") {
-              throw new Error("Requested unknown param: " + prop);
-            }
-            return target[prop];
-          },
-          set(obj, prop, value) {
-            if (typeof obj[prop] === "undefined") {
-              throw new Error("Tried to set unknown param: " + prop);
-            }
-
-            obj[prop] = value;
-            return true;
-          },
-        });
-
-        this.fxState = [...messageParsed.fxState];
-        this.channelStripSettings = [...messageParsed.channelStripSettings];
-
-        resolve({
-          params: this.settings,
-          connectionName: this.#midiOutput.name,
-          fxState: this.fxState,
-          channelStripSettings: this.channelStripSettings,
-        });
-      } else if (messageParsed.type === "meter-update") {
-        this.vuValues = messageParsed.values;
-      } else if (messageParsed.type === "change-parameter") {
-        if (messageParsed.param === 40) {
-          if (messageParsed.channel === 0) {
-            this.settings.PhantomPower01 = messageParsed.value;
-            messageHandler?.({
-              type: "change-parameter",
-              paramName: "PhantomPower01",
-              newValue: messageParsed.value,
-            });
-          } else if (messageParsed.channel === 1) {
-            this.settings.PhantomPower23 = messageParsed.value;
-            messageHandler?.({
-              type: "change-parameter",
-              paramName: "PhantomPower23",
-              newValue: messageParsed.value,
-            });
-          }
-        } else {
-          console.warn("Unknown parameter changed message received");
-          console.warn(messageParsed);
-        }
-      }
+    return {
+      params: this.settings,
+      connectionName: this.#ports.name,
+      fxState: this.fxState,
+      channelStripSettings: this.channelStripSettings,
     };
-
-    return promise;
   }
 
-  #sendChangeParameterValue(
-    parameter,
-    value,
-    channelIndex = 0,
-  ) {
-    const p0 = (parameter >> 7 * 0) & 0x7F;
-    const p1 = (parameter >> 7 * 1) & 0x7F;
-    const v32 = value & 0xFFFFFFFF;
-    const v0 = (v32 >> 7 * 0) & 0x7F;
-    const v1 = (v32 >> 7 * 1) & 0x7F;
-    const v2 = (v32 >> 7 * 2) & 0x7F;
-    const v3 = (v32 >> 7 * 3) & 0x7F;
-    const v4 = (v32 >> 7 * 4) & 0x7F;
-    const message = [
-      0xF0, 0x43, 0x10,
-      0x3E, 0x14, 0x01,
-      0x01, 0x00, p1,
-      p0, 0x00, 0x00,
-      channelIndex, v4, v3,
-      v2, v1, v0,
-      0xF7,
-    ];
-    this.#midiOutput.send(message);
-  };
+  #send(message) {
+    if (!this.#ports) throw new Error("Controller not initialized!");
+    this.#ports.output.send(message);
+  }
 
-  static FX_HEADER = [0xF0, 0x43, 0x10, 0x3E, 0x14, 0x03, 0x08];
+  #emit(event) {
+    this.#messageHandler?.(event);
+  }
 
-  setFX(channelIndex, type, mode) {
-    console.log("setFX", channelIndex, type, mode);
-    if (!canSetFx(type, channelIndex, this.fxState.map((s) => s.type))) {
-      throw new Error("Cannot add FX due to lack of resources: " + type);
+  #waitFor(list, predicate, description) {
+    return new Promise((resolve, reject) => {
+      const entry = { predicate, resolve };
+      list.push(entry);
+      setTimeout(() => {
+        const index = list.indexOf(entry);
+        if (index !== -1) {
+          list.splice(index, 1);
+          reject(new Error("Timeout waiting for " + description));
+        }
+      }, REQUEST_TIMEOUT);
+    });
+  }
+
+  #resolveFirst(list, value) {
+    const index = list.findIndex((e) => e.predicate(value));
+    if (index !== -1) {
+      const [entry] = list.splice(index, 1);
+      entry.resolve(value);
+      return true;
+    }
+    return false;
+  }
+
+  #handleMessage(data) {
+    const message = parseMessage(data);
+    switch (message.type) {
+    case "meter-update":
+      this.vuValues = message.values;
+      break;
+    case "bulk-dump":
+      this.#resolveFirst(this.#pendingDumps, { message, raw: [...data] });
+      break;
+    case "bulk-ack":
+    case "store-ack":
+      this.#resolveFirst(this.#pendingAcks, message);
+      break;
+    case "change-parameter":
+      this.#handleParamChange(message);
+      break;
+    case "keepalive":
+      break;
+    default:
+      console.log("Unknown message received", message.raw);
+    }
+  }
+
+  #handleParamChange({ param, channel, value }) {
+    const queryKey = `${param}:${channel}`;
+    if (this.#pendingQueries.has(queryKey)) {
+      this.#pendingQueries.get(queryKey)(value);
+      this.#pendingQueries.delete(queryKey);
     }
 
-    const modeByte = mode === "monitor" ? 0x01 : 0x00;
-
-    const turnOnCSMessage = [
-      ...UR44.FX_HEADER, 0x01, 0x00, 0x00, 0x00, channelIndex, modeByte, 0xf7,
-    ];
-    const turnOnAmpMessage = [
-      ...UR44.FX_HEADER, 0x01, 0x01, 0x00, 0x00, channelIndex, modeByte, 0xf7,
-    ];
-
-    const turnOffCSMessage = [
-      ...UR44.FX_HEADER, 0x02, 0x00, 0x00, 0x00, channelIndex, 0xf7,
-    ];
-    const turnOffAmpMessage = [
-      ...UR44.FX_HEADER, 0x02, 0x01, 0x00, 0x00, channelIndex, 0xf7,
-    ];
-
-    if (type === "off") {
-      this.#midiOutput.send(turnOffCSMessage);
-      this.#midiOutput.send(turnOffAmpMessage);
-
-      // refresh all stack indexes if channel strip is removed
-      if (this.fxState[channelIndex].type === "channel-strip") {
-        const stackIndex = this.fxState[channelIndex].stackIndex;
-        this.fxState.forEach((fx, i) => {
-          if (fx.type === "channel-strip" && fx.stackIndex > stackIndex) {
-            this.fxState[i].stackIndex--;
-          }
-        });
+    let changed = false;
+    for (const [paramName, spec] of this.params) {
+      if (spec.paramNumber !== param) continue;
+      if (spec.channel.kind === "stack") {
+        if (this.channelStripSettings[channel]) {
+          this.channelStripSettings[channel][paramName] = value;
+          changed = true;
+        }
+      } else if (
+        spec.channel.kind === "global"
+        || spec.channel.channels[0] === channel
+      ) {
+        this.settings[paramName] = value;
+        changed = true;
+        this.#emit({ type: "change-parameter", paramName, newValue: value });
       }
+    }
 
-      this.fxState[channelIndex] = {
-        type: "off",
-      };
+    if (param === SAMPLE_RATE_PARAM) {
+      // Effects are removed by the device at high sample rates.
+      this.refresh()
+        .then(() => this.#emit({ type: "state-refresh" }))
+        .catch((e) => console.error(e));
+    }
 
-    } else if (type === "channel-strip") {
-      this.#midiOutput.send(turnOffAmpMessage);
-      this.#midiOutput.send(turnOnCSMessage);
+    if (!changed) {
+      console.warn("Unknown parameter changed", param, channel, value);
+    }
+  }
 
-      /*
-        If we just change the mode, e.g. from insert to monitor, we don't
-        change the stack index. If we actually create a new channel strip, we
-        need to raise the stack index of all other channel strips.
-      */
+  async #queryParams(ids) {
+    const replies = ids.map((id) => {
+      return new Promise((resolve) => {
+        this.#pendingQueries.set(`${id}:0`, resolve);
+        setTimeout(() => {
+          this.#pendingQueries.delete(`${id}:0`);
+          resolve(null);
+        }, REQUEST_TIMEOUT);
+      });
+    });
+    ids.forEach((id) => this.#send(encodeParamQuery(id, 0)));
+    await Promise.all(replies);
+  }
 
-      const currentState = this.fxState[channelIndex];
-      const currentType = currentState?.type;
+  /* Re-reads the params which are not contained in dumps. */
+  refreshQueriedParams() {
+    return this.#queryParams(QUERIED_PARAM_IDS);
+  }
 
-      let stackIndex;
+  /* Requests the complete device state and updates everything from it. */
+  async refresh() {
+    // Changes sent after the request are not contained in the dump, they
+    // are re-applied to the local state afterwards.
+    const requestSeq = this.#changeSeq;
+    const reply = this.#waitFor(
+      this.#pendingDumps,
+      ({ message }) => message.dump.name === "All",
+      "state dump",
+    );
+    this.#send(encodeDumpRequest(DUMP_ADDRESS_ALL));
+    const { message } = await reply;
+    this.#applyDump(message.dump);
+    const newer = this.#localChanges.filter((c) => c.seq > requestSeq);
+    newer.forEach((c) => this.#setLocal(c.paramName, c.value, c.stackIndex));
+    this.#localChanges = newer;
+    return this.settings;
+  }
 
-      if (currentType !== "channel-strip") {
-        // new channel strip item in the stack, raise all stack indexes
-        this.fxState.forEach((fx, i) => {
-          if (fx.type === "channel-strip") {
-            this.fxState[i].stackIndex++;
-          }
+  #applyDump(dump) {
+    this.#lastDump = dump;
+    const { values } = dump;
+    const settings = {};
+    const strips = Array.from({ length: STRIP_COUNT }, () => ({}));
+
+    for (const [paramName, spec] of this.params) {
+      const paramValues = values.get(spec.paramNumber);
+      if (spec.channel.kind === "stack") {
+        strips.forEach((strip, i) => {
+          strip[paramName] = paramValues?.[i] ?? spec.defaultValue;
         });
-
-        stackIndex = 0;
       } else {
-        stackIndex = this.fxState[channelIndex].stackIndex;
+        const channel = spec.channel.kind === "global"
+          ? 0
+          : spec.channel.channels[0];
+        // keep values of params which are not contained in dumps
+        settings[paramName] = paramValues?.[channel]
+          ?? this.settings?.[paramName]
+          ?? spec.defaultValue;
       }
+    }
 
-      this.fxState[channelIndex] = {
-        type,
-        mode,
-        stackIndex,
-      };
-    } else if (type === "amp") {
-      this.#midiOutput.send(turnOffCSMessage);
-      this.#midiOutput.send(turnOnAmpMessage);
-
-      // refresh all stack indexes if channel strip is removed
-      if (this.fxState[channelIndex].type === "channel-strip") {
-        const stackIndex = this.fxState[channelIndex].stackIndex;
-        this.fxState.forEach((fx, i) => {
-          if (fx.type === "channel-strip" && fx.stackIndex > stackIndex) {
-            this.fxState[i].stackIndex--;
-          }
-        });
-      }
-
-      this.fxState[channelIndex] = {
-        type,
-        mode,
-      };
+    if (this.settings) {
+      Object.assign(this.settings, settings);
     } else {
+      this.settings = createSettingsProxy(settings);
+    }
+    this.channelStripSettings = strips;
+
+    this.fxState = [0, 1, 2, 3, 4, 5].map((c) => deriveFxState(values, c));
+
+    this.sweetSpots = strips.map((_, strip) => ({
+      id: readString(
+        values, MORPH_SYSTEM_ID_PARAM, strip, MORPH_SYSTEM_ID_LENGTH,
+      ),
+      name: readString(
+        values, MORPH_SYSTEM_NAME_PARAM, strip, MORPH_SYSTEM_NAME_LENGTH,
+      ),
+    }));
+
+    this.morphTable = strips.map((_, strip) => {
+      return Array.from({ length: MORPH_POINTS }, (__, point) => {
+        return MORPH_TABLE_PARAM_IDS.map((id) => {
+          return values.get(id)?.[strip * MORPH_POINTS + point] ?? 0;
+        });
+      });
+    });
+  }
+
+  get sampleRateCode() {
+    return this.settings.SampleRate;
+  }
+
+  get sampleRate() {
+    return SAMPLE_RATES[this.settings.SampleRate];
+  }
+
+  get fxAvailable() {
+    return fxAvailableAtSampleRateCode(this.settings.SampleRate);
+  }
+
+  isLinked(channelIndex) {
+    const left = channelIndex - (channelIndex % 2);
+    return this.settings[`Input${left}Link`] === 1;
+  }
+
+  canSetFx(type, channelIndex) {
+    if (type !== "off" && !this.fxAvailable) return false;
+    return canSetFx(
+      type,
+      channelIndex,
+      this.fxState.map((s) => s.type),
+      [0, 1, 2, 3, 4, 5].map((c) => this.isLinked(c)),
+    );
+  }
+
+  /*
+    Inserts/removes effects. The device allocates channel strips itself
+    (stereo strips first, new mono strips at the front, existing ones get
+    shifted), so we read the resulting state back from the device.
+  */
+  setFX(channelIndex, type, mode = "insert", ampType) {
+    // run one after another, each one needs the state of the previous one
+    const run = this.#fxQueue.then(() => {
+      return this.#setFX(channelIndex, type, mode, ampType);
+    });
+    this.#fxQueue = run.catch(() => {});
+    return run;
+  }
+
+  async #setFX(channelIndex, type, mode, ampType) {
+    if (!this.canSetFx(type, channelIndex)) {
+      throw new Error("Cannot add FX due to lack of resources: " + type);
+    }
+    const insertPoint = mode === "monitor" ? 1 : 0;
+    const current = this.fxState[channelIndex];
+
+    if (type === "off" || current.type !== type) {
+      if (current.type === "channel-strip") {
+        this.#send(encodeFxRemove(FX_CHANNEL_STRIP, channelIndex));
+      } else if (current.type === "amp") {
+        this.#send(encodeFxRemove(FX_GUITAR_AMP, channelIndex));
+      }
+    }
+
+    if (type === "channel-strip") {
+      this.#send(encodeFxInsert(FX_CHANNEL_STRIP, channelIndex, insertPoint));
+    } else if (type === "amp") {
+      this.#send(encodeFxInsert(FX_GUITAR_AMP, channelIndex, insertPoint));
+      if (typeof ampType === "number") {
+        this.updateParamValue("AmpType", ampType);
+      }
+    } else if (type !== "off") {
       throw new Error("Invalid FX type: " + type);
+    }
+
+    await this.refresh();
+    this.#emit({ type: "local-change" });
+    // the device silently ignores inserts it can't fulfil
+    if (this.fxState[channelIndex].type !== type) {
+      throw new Error(
+        `The device did not apply ${type} on input ${channelIndex + 1}`,
+      );
     }
   }
 
   getVuValues(channelId) {
-    if (!this.vuValues) throw new Error(
-      "Error getting vu values. No values received yet.",
-    );
+    if (!this.vuValues) {
+      throw new Error("Error getting vu values. No values received yet.");
+    }
     return this.vuValues[channelId];
-  };
+  }
+
+  /* gain reduction (<= 0 dB) and output level (dBFS) of a channel strip */
+  getChannelStripMeters(stackIndex) {
+    if (!this.vuValues) return null;
+    const gr = this.vuValues.channelStripGainReduction[stackIndex];
+    const out = this.vuValues.channelStripOutput[stackIndex];
+    return {
+      gainReduction: Math.min(0, meterValueToDb(gr.momentary)),
+      output: meterValueToDb(out.momentary),
+      outputPeak: meterValueToDb(out.max),
+    };
+  }
+
+  #setLocal(paramName, value, stackIndex) {
+    const spec = this.params.get(paramName);
+    if (spec.channel.kind === "stack") {
+      const strips = [stackIndex];
+      // the device mirrors parameters of stereo strips
+      if (this.channelStripSettings[stackIndex]?.ChannelStripStereoLink) {
+        strips.push(stackIndex ^ 1);
+      }
+      strips.forEach((s) => {
+        if (this.channelStripSettings[s]) {
+          this.channelStripSettings[s][paramName] = value;
+        }
+      });
+      return;
+    }
+    this.settings[paramName] = value;
+
+    // mirror locally what the device mirrors for linked channels
+    if (
+      spec.channel.kind === "channels"
+      && spec.channel.channels.length === 1
+      && LINK_MIRRORED_PARAM_IDS.includes(spec.paramNumber)
+    ) {
+      const channel = spec.channel.channels[0];
+      if (this.isLinked(channel)) {
+        const partner = getLinkPartner(channel);
+        const partnerName = this.#findParamName(spec.paramNumber, partner);
+        if (partnerName) this.settings[partnerName] = value;
+      }
+    }
+  }
+
+  #findParamName(paramNumber, channel) {
+    for (const [name, spec] of this.params) {
+      if (
+        spec.paramNumber === paramNumber
+        && spec.channel.kind === "channels"
+        && spec.channel.channels.length === 1
+        && spec.channel.channels[0] === channel
+      ) {
+        return name;
+      }
+    }
+    return null;
+  }
 
   updateParamValue(paramName, value, stackIndex) {
-    if (!this.#midiOutput || !this.params) {
+    if (!this.#ports || !this.settings) {
       throw new Error("Controller not initialized!");
     }
 
-    if (!this.params.has(paramName)) {
+    const param = this.params.get(paramName);
+    if (!param) {
       throw new Error("Invalid param name: " + paramName);
     }
-
-    const param = this.params.get(paramName);
-
     if (param.readOnly) {
       throw new Error("This parameter is read-only");
     }
 
-    if (param.channel === "null") {
-      console.log(
-        "updateParamValue", paramName, value,
-      );
-      this.#sendChangeParameterValue(
-        param.paramNumber, value,
-      );
-      this.settings[paramName] = value;
-      return;
-    }
-
-    // Check if we need to provide an input channel
     let channelIndexes;
-
-    /* If the device expects a stack index, the caller must provide it */
-    if (param.channel === "stack") {
+    if (param.channel.kind === "global") {
+      channelIndexes = [0];
+    } else if (param.channel.kind === "stack") {
+      if (
+        typeof stackIndex !== "number"
+        || stackIndex < 0
+        || stackIndex >= STRIP_COUNT
+      ) {
+        throw new Error("Invalid stack index: " + stackIndex);
+      }
       channelIndexes = [stackIndex];
-    } else if (param.channel.includes("+")) {
-      channelIndexes = param.channel.split("+").map((c) => parseInt(c.trim()));
     } else {
-      channelIndexes = [parseInt(param.channel)];
-    }
-
-    if (channelIndexes.some((c) => c < 0 || c > 5)) {
-      throw new Error("Invalid input index: " + param.channel);
+      channelIndexes = param.channel.channels;
     }
 
     for (const channelIndex of channelIndexes) {
-      console.log(
-        `updateParamValue ${paramName} for ch.index ${channelIndex} to value ${value}, stack index ${stackIndex}`,
-      );
-      this.#sendChangeParameterValue(
-        param.paramNumber, value, channelIndex,
-      );
-      this.settings[paramName] = value;
+      this.#send(encodeParamChange(param.paramNumber, channelIndex, value));
     }
-  };
+    this.#setLocal(paramName, value, stackIndex);
+    this.#localChanges.push({
+      seq: ++this.#changeSeq, paramName, value, stackIndex,
+    });
+    if (this.#localChanges.length > 1000) this.#localChanges.shift();
+    this.#emit({ type: "local-change", paramName });
+
+    if (param.paramNumber === LINK_PARAM) {
+      // Linking copies values from the left to the right channel and turns
+      // channel strips into stereo strips.
+      return this.refresh();
+    }
+
+    if (param.paramNumber === MORPH_VALUE_PARAM) {
+      // The device interpolates the compressor and EQ values from the
+      // morphing table, read them back (debounced while dragging).
+      this.#applyMorphLocally(stackIndex, value);
+      clearTimeout(this.#morphRefreshTimer);
+      this.#morphRefreshTimer = setTimeout(() => {
+        this.refresh()
+          .then(() => this.#emit({ type: "state-refresh" }))
+          .catch((e) => console.error(e));
+      }, 250);
+    }
+
+    return Promise.resolve();
+  }
+
+  #applyMorphLocally(stackIndex, morphValue) {
+    const points = this.morphTable[stackIndex];
+    const strip = this.channelStripSettings[stackIndex];
+    if (!points || !strip) return;
+    MORPH_TABLE_PARAM_IDS.forEach((morphId, i) => {
+      // morph table ids 83..99 correspond to strip params 45..63 (without 54)
+      const targetId = MORPH_TARGET_IDS[i];
+      for (const [name, spec] of this.params) {
+        if (spec.paramNumber === targetId && spec.channel.kind === "stack") {
+          strip[name] = interpolateMorph(points.map((p) => p[i]), morphValue);
+        }
+      }
+    });
+  }
+
+  /*
+    Sweet Spot Data: the morphing table of one channel strip.
+    { id: "0001", name: "01 Basic", points: number[9][17] }
+  */
+  getSweetSpotData(stackIndex) {
+    return {
+      id: this.sweetSpots[stackIndex]?.id ?? "",
+      name: this.sweetSpots[stackIndex]?.name ?? "",
+      points: this.morphTable[stackIndex]?.map((p) => [...p]) ?? [],
+    };
+  }
+
+  async loadSweetSpotData(stackIndex, { id, name, points }) {
+    if (!this.#lastDump) throw new Error("Controller not initialized!");
+    if (
+      points.length !== MORPH_POINTS
+      || points.some((p) => p.length !== MORPH_TABLE_PARAM_IDS.length)
+    ) {
+      throw new Error("Invalid sweet spot data");
+    }
+    points.forEach((point) => point.forEach((value, i) => {
+      const range = PARAM_RANGES[MORPH_TABLE_KEYS[i]];
+      if (
+        !Number.isInteger(value) || value < range.min || value > range.max
+      ) {
+        throw new Error(
+          `Invalid sweet spot data: ${MORPH_TABLE_KEYS[i]} = ${value}`,
+        );
+      }
+    }));
+    id = toDeviceString(id ?? "");
+    name = toDeviceString(name ?? "");
+
+    // a stereo strip consists of two strips which share their settings
+    const strips = this.channelStripSettings[stackIndex]?.ChannelStripStereoLink
+      ? [stackIndex & ~1, stackIndex | 1]
+      : [stackIndex];
+
+    const values = new Map(
+      [...this.#lastDump.values].map(([k, v]) => [k, [...v]]),
+    );
+    const writeString = (paramId, length, strip, string) => {
+      const array = values.get(paramId);
+      for (let i = 0; i < length; i++) {
+        array[strip * length + i] = i < string.length
+          ? string.charCodeAt(i)
+          : 0;
+      }
+    };
+    for (const strip of strips) {
+      writeString(MORPH_SYSTEM_ID_PARAM, MORPH_SYSTEM_ID_LENGTH, strip, id);
+      writeString(
+        MORPH_SYSTEM_NAME_PARAM, MORPH_SYSTEM_NAME_LENGTH, strip, name,
+      );
+      points.forEach((point, p) => {
+        MORPH_TABLE_PARAM_IDS.forEach((paramId, i) => {
+          values.get(paramId)[strip * MORPH_POINTS + p] = point[i];
+        });
+      });
+    }
+
+    const groups = this.#lastDump.groups.filter((g) => {
+      return g.params.some((p) => p.id >= MORPH_SYSTEM_ID_PARAM && p.id <= 99);
+    });
+    const blockHeader = (header, prefix) => {
+      const nameBytes = new Array(16).fill(0);
+      [...`${prefix}MorphingTable`].forEach((c, i) => {
+        nameBytes[i] = c.charCodeAt(0);
+      });
+      return [...nameBytes, ...header.slice(16)];
+    };
+    const ack = this.#waitFor(
+      this.#pendingAcks,
+      (m) => m.type === "bulk-ack" && m.dumpType === 2,
+      "morphing table ack",
+    );
+    this.#send(encodeBulkDump({
+      address: [0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x02],
+      formatHeader: blockHeader(this.#lastDump.formatHeader, "F_"),
+      dataHeader: blockHeader(this.#lastDump.dataHeader, "D_"),
+      groups,
+      values,
+    }));
+    await ack;
+
+    // make the device apply the new table at the current morph position
+    for (const strip of strips) {
+      const morph = this.channelStripSettings[strip].ChannelStripMorphing;
+      this.#send(encodeParamChangeReapply(MORPH_VALUE_PARAM, strip, morph));
+    }
+    await this.refresh();
+    this.#emit({ type: "local-change" });
+  }
+
+  /* Scenes are stored on the host, like dspMixFx does. */
+  async captureScene() {
+    const reply = this.#waitFor(
+      this.#pendingDumps,
+      ({ message }) => message.dump.name === "CurrentScene",
+      "scene dump",
+    );
+    this.#send(encodeDumpRequest(DUMP_ADDRESS_CURRENT_SCENE));
+    const { raw } = await reply;
+    const extras = {};
+    for (const id of QUERIED_PARAM_IDS) {
+      const name = [...this.params].find(([, s]) => s.paramNumber === id)?.[0];
+      if (name) extras[id] = this.settings[name];
+    }
+    return { dump: raw, extras };
+  }
+
+  async recallScene({ dump, extras = {} }) {
+    // like dspMixFx: remove all effects first, the dump re-inserts them
+    for (let channel = 0; channel < 6; channel++) {
+      this.#send(encodeFxRemove(FX_CHANNEL_STRIP, channel));
+      this.#send(encodeFxRemove(FX_GUITAR_AMP, channel));
+    }
+    const ack = this.#waitFor(
+      this.#pendingAcks,
+      (m) => m.type === "bulk-ack" && m.dumpType === 1,
+      "scene ack",
+    );
+    this.#send(dump);
+    await ack;
+    for (const [id, value] of Object.entries(extras)) {
+      this.#send(encodeParamChange(parseInt(id), 0, value));
+      const name = [...this.params]
+        .find(([, s]) => s.paramNumber === parseInt(id))?.[0];
+      if (name) this.settings[name] = value;
+    }
+    await this.storeToDevice();
+    await this.refresh();
+  }
+
+  /* Makes the device keep the current state after power cycling. */
+  async storeToDevice() {
+    const ack = this.#waitFor(
+      this.#pendingAcks,
+      (m) => m.type === "store-ack",
+      "store ack",
+    );
+    this.#send(STORE_COMMAND);
+    await ack;
+  }
 
   selectActiveMix(mix) {
-    if (!this.#midiOutput) {
-      throw new Error("Controller not initialized!");
-    }
-
-    const params = [0x23, 0x24];
-    params.forEach((param) => {
-      this.#sendChangeParameterValue(param, mix);
+    // PatchDawMeter and PatchMasterMeter: which mix the meters show
+    [35, 36].forEach((param) => {
+      this.#send(encodeParamChange(param, 0, mix));
     });
-  };
-
+  }
 
   getDBFSFromSliderValue(val) {
-    /*
-      Vol db steps
-
-      0 = -Infinity
-      -74 - -50 2DB steps
-      -50 - -20 1DB steps
-      -20 - -10 0.5 db steps
-      -10 - +6  0.25 db steps
-    */
-
-    // This mapping is neither linear nor perfectly logarithmic, therefore we
-    // use this lookup table.
-    const values = [
-      -Infinity,
-      -74,
-      -72,
-      -70,
-      -68,
-      -66,
-      -64,
-      -62,
-      -60,
-      -58,
-      -56,
-      -54,
-      -52,
-      -50,
-      -49,
-      -48,
-      -47,
-      -46,
-      -45,
-      -44,
-      -43,
-      -42,
-      -41,
-      -40,
-      -39,
-      -38,
-      -37,
-      -36,
-      -35,
-      -34,
-      -33,
-      -32,
-      -31,
-      -30,
-      -29,
-      -28,
-      -27,
-      -26,
-      -25,
-      -24,
-      -23,
-      -22,
-      -21,
-      -20,
-      -19.5,
-      -19,
-      -18.5,
-      -18,
-      -17.5,
-      -17,
-      -16.5,
-      -16,
-      -15.5,
-      -15,
-      -14.5,
-      -14,
-      -13.5,
-      -13,
-      -12.5,
-      -12,
-      -11.5,
-      -11,
-      -10.5,
-      -10,
-      -9.75,
-      -9.5,
-      -9.25,
-      -9,
-      -8.75,
-      -8.5,
-      -8.25,
-      -8,
-      -7.75,
-      -7.5,
-      -7.25,
-      -7,
-      -6.75,
-      -6.5,
-      -6.25,
-      -6,
-      -5.75,
-      -5.5,
-      -5.25,
-      -5,
-      -4.75,
-      -4.5,
-      -4.25,
-      -4,
-      -3.75,
-      -3.5,
-      -3.25,
-      -3,
-      -2.75,
-      -2.5,
-      -2.25,
-      -2,
-      -1.75,
-      -1.5,
-      -1.25,
-      -1,
-      -0.75,
-      -0.5,
-      -0.25,
-      0,
-      0.25,
-      0.5,
-      0.75,
-      1,
-      1.25,
-      1.5,
-      1.75,
-      2,
-      2.25,
-      2.5,
-      2.75,
-      3,
-      3.25,
-      3.5,
-      3.75,
-      4,
-      4.25,
-      4.5,
-      4.75,
-      5,
-      5.25,
-      5.5,
-      5.75,
-      6,
-    ];
-    return values[val];
-  };
-
+    return getDBFSFromSliderValue(val);
+  }
 
   static INPUT_CHANNEL_IDS = [
     "analog1",
@@ -513,560 +812,57 @@ export default class UR44 {
 
   getChannelIndexFromChannelId(channelId) {
     return UR44.INPUT_CHANNEL_IDS.indexOf(channelId);
-  };
-
-  parseSysExMessage(message) {
-    // change parameter message
-    if (
-      message.length === 19
-      && arraysAreEqual(
-        message.slice(0, 8),
-        [0xF0, 0x43, 0x10, 0x3E, 0x14, 0x01, 0x01, 0x00],
-      )
-    ) {
-      const param = message[8] * 128 + message[9];
-      const channel = message[12];
-      const v32
-        = message[13] * (128 ** 4)
-        + message[14] * (128 ** 3)
-        + message[15] * (128 ** 2)
-        + message[16] * 128
-        + message[17];
-      const value = (v32 & 0x7FFFFFFF) - (v32 & 0x80000000);
-      return {
-        "type": "change-parameter",
-        "channel": channel,
-        "param": param,
-        "value": value,
-      };
-    // query parameter message
-    } else if (
-      message.length === 15
-      && arraysAreEqual(
-        message.slice(0, 9),
-        [0xF0, 0x43, 0x30, 0x3E, 0x14, 0x01, 0x04, 0x02, 0x00],
-      )
-    ) {
-      const param = message[9] * 128 + message[10];
-      const channel = message[13];
-      return {
-        "type": "query-parameter",
-        "channel": channel,
-        "param": param,
-      };
-    // reply parameter message
-    } else if (
-      message.length === 20
-      && arraysAreEqual(
-        message.slice(0, 9),
-        [0xF0, 0x43, 0x10, 0x3E, 0x14, 0x01, 0x04, 0x02, 0x00],
-      )
-    ) {
-      const param = message[9] * 128 + message[10];
-      const channel = message[13];
-      const v32
-        = message[14] * (128 ** 4)
-        + message[15] * (128 ** 3)
-        + message[16] * (128 ** 2)
-        + message[17] * 128
-        + message[18];
-      const value = (v32 & 0x7FFFFFFF) - (v32 & 0x80000000);
-      return {
-        "type": "reply-parameter",
-        "channel": channel,
-        "param": param,
-        "value": value,
-      };
-      // meter update message
-    /*
-      Indexes table
-      Channel Mom.  Recent maximum
-      Analog1 08-09 11-12
-      Analog2 14-15 17-18
-      Analog3 20-21 23-24
-      Analog4 26-27 29-30
-      Analog5 32-33 35-36
-      Analog6 38-39 41-42
-      DAW L   44-45 47-48
-      DAW R   50-51 53-54
-      MasterL 56-57 59-60
-      MasterR 62-63 65-66
-    */
-    } else if (
-      message.length === 140
-      && arraysAreEqual(message.slice(0, 7), [240, 67, 16, 62, 20, 2, 2])
-    ) {
-      const values = {
-        analog1: {
-          momentary: message[8] * 128 + message[9],
-          max: message[11] * 128 + message[12],
-        },
-        analog2: {
-          momentary: message[14] * 128 + message[15],
-          max: message[17] * 128 + message[18],
-        },
-        analog3: {
-          momentary: message[20] * 128 + message[21],
-          max: message[23] * 128 + message[24],
-        },
-        analog4: {
-          momentary: message[26] * 128 + message[27],
-          max: message[29] * 128 + message[30],
-        },
-        analog5: {
-          momentary: message[32] * 128 + message[33],
-          max: message[35] * 128 + message[36],
-        },
-        analog6: {
-          momentary: message[38] * 128 + message[39],
-          max: message[41] * 128 + message[42],
-        },
-        dawL: {
-          momentary: message[44] * 128 + message[45],
-          max: message[47] * 128 + message[48],
-        },
-        dawR: {
-          momentary: message[50] * 128 + message[51],
-          max: message[53] * 128 + message[54],
-        },
-        masterL: {
-          momentary: message[56] * 128 + message[57],
-          max: message[59] * 128 + message[60],
-        },
-        masterR: {
-          momentary: message[62] * 128 + message[63],
-          max: message[65] * 128 + message[66],
-        },
-      };
-
-      return {
-        "type": "meter-update",
-        values,
-      };
-    // keepalive
-    } else if (arraysAreEqual(
-      message,
-      [0xF0, 0x43, 0x10, 0x3E, 0x14, 0x00, 0x04, 0x02, 0xF7],
-    )) {
-      return { "type": "keepalive" };
-    } else if (message.length === 3520) {
-      // init message
-      console.log(message);
-
-      const values = {};
-
-      for (const [param, props] of this.params.entries()) {
-        const rawValue = message[props.initMessageIndex];
-
-        if ((props.min < 0) && (rawValue > 64)) {
-          values[param] = rawValue - 128;
-        } else {
-          values[param] = rawValue;
-        }
-      }
-
-      const getFxState = (csInsOn, csMonOn, ampInsOn, ampMonOn) => {
-        /*
-          If channel strip is enabled for a channel, we will receive a
-          stack index greater than zero. This stack index must be used
-          if the parameters of the channel strip are set.
-        */
-        if (csInsOn > 0) {
-          return {
-            type: "channel-strip",
-            mode: "insert",
-            stackIndex: csInsOn - 1,
-          };
-        } else if (csMonOn > 0) {
-          return {
-            type: "channel-strip",
-            mode: "monitor",
-            stackIndex: csMonOn - 1,
-          };
-        } else if (ampInsOn === 1) {
-          return {
-            type: "amp",
-            mode: "insert",
-          };
-        } else if (ampMonOn === 1) {
-          return {
-            type: "amp",
-            mode: "monitor",
-          };
-        } else {
-          return {
-            type: "off",
-          };
-        }
-      };
-
-      return {
-        "type": "init",
-        values,
-        fxState: [
-          getFxState(message[971], message[978], message[985], message[992]),
-          getFxState(message[972], message[979], message[986], message[993]),
-          getFxState(message[974], message[980], message[987], message[994]),
-          getFxState(message[975], message[982], message[988], message[995]),
-          getFxState(message[976], message[983], message[990], message[996]),
-          getFxState(message[977], message[984], message[991], message[998]),
-        ],
-        // channel strip settings from stack index 0 to 3
-        channelStripSettings: [
-          {
-            attack: message[3271] === 1
-              ? message[3272] + 256
-              : (
-                (message[3277] >>> 4) % 2 === 1
-                  ? message[3272] + 128
-                  : message[3272]
-              ),
-            release: message[3280] === 1
-              ? message[3281] + 256
-              : (
-                (message[3285] >>> 3) % 2 === 1
-                  ? message[3281] + 128
-                  : message[3281]
-              ),
-            ratio: message[3289],
-            knee: message[3294],
-            sidechainQ: message[3321],
-            sidechainF: message[3307],
-            sidechainG: message[3312] === 1
-              ? message[3313] + 256
-              : (
-                (message[3317] >>> 3) % 2 === 1
-                  ? message[3313] + 128
-                  : message[3313]
-              ),
-            lowFreq: message[3362],
-            drive: (message[3269] >>> 2) % 2 === 1
-              ? message[3266] + 128
-              : message[3266],
-            lowGain: message[3367] === 1
-              ? message[3368] + 256
-              : (
-                (message[3373] >>> 4) % 2 === 1
-                  ? message[3368] + 128
-                  : message[3368]
-              ),
-            midQ: message[3358],
-            midFreq: message[3344],
-            midGain: message[3348] === 1
-              ? message[3350] + 256
-              : (
-                (message[3357] >>> 6) % 2 === 1
-                  ? message[3350] + 128
-                  : message[3350]
-              ),
-            highFreq: message[3330],
-            highGain: message[3335] === 1
-              ? message[3336] + 256
-              : (
-                (message[3341] >>> 4) % 2 === 1
-                  ? message[3336] + 128
-                  : message[3336]
-              ),
-            totalGain: message[3376] === 1
-              ? message[3377] + 256
-              : (
-                (message[3381] >>> 3) % 2 === 1
-                  ? message[3377] + 128
-                  : message[3377]
-              ),
-          },
-          {
-            attack: message[3273] === 1
-              ? message[3274] + 256
-              : (
-                (message[3277] >>> 2) % 2 === 1
-                  ? message[3274] + 128
-                  : message[3274]
-              ),
-            release: message[3282] === 1
-              ? message[3283] + 256
-              : (
-                (message[3285] >>> 1) % 2 === 1
-                  ? message[3283] + 128
-                  : message[3283]
-              ),
-            ratio: message[3290],
-            knee: message[3295],
-            sidechainQ: message[3322],
-            sidechainF: message[3308],
-            sidechainG: message[3314] === 1
-              ? message[3315] + 256
-              : (
-                (message[3317] >>> 1) % 2 === 1
-                  ? message[3315] + 128
-                  : message[3315]
-              ),
-            lowFreq: message[3363],
-            drive: (message[3269] >>> 1) % 2 === 1
-              ? message[3267] + 128
-              : message[3267],
-            lowGain: message[3369] === 1
-              ? message[3370] + 256
-              : (
-                (message[3373] >>> 2) % 2 === 1
-                  ? message[3370] + 128
-                  : message[3370]
-              ),
-            midQ: message[3359],
-            midFreq: message[3345],
-            midGain: message[3351] === 1
-              ? message[3352] + 256
-              : (
-                (message[3357] >>> 4) % 2 === 1
-                  ? message[3352] + 128
-                  : message[3352]
-              ),
-            highFreq: message[3331],
-            highGain: message[3337] === 1
-              ? message[3338] + 256
-              : (
-                (message[3341] >>> 2) % 2 === 1
-                  ? message[3338] + 128
-                  : message[3338]
-              ),
-            totalGain: message[3378] === 1
-              ? message[3379] + 256
-              : (
-                (message[3381] >>> 1) % 2 === 1
-                  ? message[3379] + 128
-                  : message[3379]
-              ),
-          },
-          {
-            attack: message[3275] === 1
-              ? message[3276] + 256
-              : (
-                message[3277] % 2 === 1
-                  ? message[3276] + 128
-                  : message[3276]
-              ),
-            release: message[3284] === 1
-              ? message[3286] + 256
-              : (
-                (message[3293] >>> 6) % 2 === 1
-                  ? message[3286] + 128
-                  : message[3286]
-              ),
-            ratio: message[3291],
-            knee: message[3296],
-            sidechainQ: message[3323],
-            sidechainF: message[3310],
-            sidechainG: message[3316] === 1
-              ? message[3318] + 256
-              : (
-                (message[3325] >>> 6) % 2 === 1
-                  ? message[3318] + 128
-                  : message[3318]
-              ),
-            lowFreq: message[3364],
-            drive: message[3269] % 2 === 1
-              ? message[3268] + 128
-              : message[3268],
-            lowGain: message[3371] === 1
-              ? message[3372] + 256
-              : (
-                message[3373] % 2 === 1
-                  ? message[3372] + 128
-                  : message[3372]
-              ),
-            midQ: message[3360],
-            midFreq: message[3346],
-            midGain: message[3353] === 1
-              ? message[3354] + 256
-              : (
-                (message[3357] >>> 2) % 2 === 1
-                  ? message[3354] + 128
-                  : message[3354]
-              ),
-            highFreq: message[3332],
-            highGain: message[3339] === 1
-              ? message[3340] + 256
-              : (
-                message[3341] % 2 === 1
-                  ? message[3340] + 128
-                  : message[3340]
-              ),
-            totalGain: message[3380] === 1
-              ? message[3382] + 256
-              : (
-                (message[3389] >>> 6) % 2 === 1
-                  ? message[3382] + 128
-                  : message[3382]
-              ),
-          },
-          {
-            attack: message[3278] === 1
-              ? message[3279] + 256
-              : (
-                (message[3285] >>> 5) % 2 === 1
-                  ? message[3279] + 128
-                  : message[3279]
-              ),
-            release: message[3287] === 1
-              ? message[3288] + 256
-              : (
-                (message[3293] >>> 4) % 2 === 1
-                  ? message[3288] + 128
-                  : message[3288]
-              ),
-            ratio: message[3292],
-            knee: message[3297],
-            sidechainQ: message[3324],
-            sidechainF: message[3311],
-            sidechainG: message[3319] === 1
-              ? message[3320] + 256
-              : (
-                (message[3325] >>> 4) % 2 === 1
-                  ? message[3320] + 128
-                  : message[3320]
-              ),
-            lowFreq: message[3366],
-            drive: (message[3277] >>> 6) % 2 === 1
-              ? message[3270] + 128
-              : message[3270],
-            lowGain: message[3374] === 1
-              ? message[3375] + 256
-              : (
-                (message[3381] >>> 5) % 2 === 1
-                  ? message[3375] + 128
-                  : message[3375]
-              ),
-            midQ: message[3361],
-            midFreq: message[3347],
-            midGain: message[3355] === 1
-              ? message[3356] + 256
-              : (
-                message[3357] % 2 === 1
-                  ? message[3356] + 128
-                  : message[3356]
-              ),
-            highFreq: message[3334],
-            highGain: message[3342] === 1
-              ? message[3343] + 256
-              : (
-                message[3349] % 5 === 1
-                  ? message[3343] + 128
-                  : message[3343]
-              ),
-            totalGain: message[3383] === 1
-              ? message[3384] + 256
-              : (
-                (message[3389] >>> 4) % 2 === 1
-                  ? message[3384] + 128
-                  : message[3384]
-              ),
-          },
-        ],
-      };
-    }
-
-    return { "type": "unknown", raw: message };
-  };
-
+  }
 
   sendInitMessages() {
     const initMessages = [
+      // monitor matrix control mode
       [0xf0, 0x43, 0x10, 0x3e, 0x14, 0x03, 0x09, 0x01, 0x00, 0xf7],
+      // "EDITOR 2.2.0"
       [
         0xf0, 0x43, 0x10, 0x3e, 0x14, 0x00, 0x01, 0x45, 0x44, 0x49, 0x54, 0x4f,
         0x52, 0x00, 0x32, 0x2e, 0x32, 0x2e, 0x30, 0x00, 0xf7,
       ],
-      [
-        0xf0, 0x43, 0x20, 0x3e, 0x14, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x03,
-        0xf7,
-      ],
+      // version request
       [0xf0, 0x43, 0x30, 0x3e, 0x14, 0x00, 0x07, 0x70, 0x02, 0xf7],
-
-      // selecting active mix 1
-      [
-        0xf0, 0x43, 0x10, 0x3e, 0x14, 0x01, 0x01, 0x00, 0x00, 0x24, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf7,
-      ],
-      [
-        0xf0, 0x43, 0x10, 0x3e, 0x14, 0x01, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf7,
-      ],
+      // meters of mix 1
+      encodeParamChange(36, 0, 0),
+      encodeParamChange(35, 0, 0),
+      // start meters
       [0xf0, 0x43, 0x30, 0x3e, 0x14, 0x02, 0x02, 0x32, 0x7f, 0xf7],
     ];
 
-    initMessages.forEach((m) => this.#midiOutput.send(m));
-  };
+    initMessages.forEach((m) => this.#send(m));
+  }
 
   closeSession() {
     const CLOSE_MESSAGE = [
       0xf0, 0x43, 0x30, 0x3e, 0x14, 0x02, 0x02, 0x32, 0x00, 0xf7,
     ];
-
-    this.#midiOutput.send(CLOSE_MESSAGE);
-  };
+    this.#send(CLOSE_MESSAGE);
+  }
 }
 
+/* strip param ids in the order of MORPH_TABLE_PARAM_IDS */
+const MORPH_TARGET_IDS = [
+  45, 46, 47, 48, 49, 50, 51, 52, 53, 56, 57, 58, 59, 60, 61, 62, 63,
+];
 
 /*
-According to the UR44 manual, the following FX combinations are possible
-
-Channel Strip Guitar Amp Emulation
-Mono Stereo   Mono Stereo
-4    0        0    -
-2    1        0    -
-2    0        1    -
-0    2        0    -
-0    1        1    -
-
-This means we have a total budget of 4 (counting stereo channel strip and
-guitar amp emulation with 2, with the additional requirement that there
-can be only one guitar amp emulation active)
+  Vol db steps
+  0 = -Infinity
+  -74 - -50 2DB steps
+  -50 - -20 1DB steps
+  -20 - -10 0.5 db steps
+  -10 - +6  0.25 db steps
 */
+const DB_STEPS = (() => {
+  const values = [-Infinity];
+  for (let db = -74; db < -50; db += 2) values.push(db);
+  for (let db = -50; db < -20; db += 1) values.push(db);
+  for (let db = -20; db < -10; db += 0.5) values.push(db);
+  for (let db = -10; db <= 6; db += 0.25) values.push(db);
+  return values;
+})();
 
-export const getBudgetInUse = (existingActiveTypes) => {
-  return existingActiveTypes
-    .reduce((a, b) => {
-      if (b === "channel-strip") {
-        return a + 1;
-      } else if (b === "amp") {
-        return a + 2;
-      } else if (b === "off") {
-        return a;
-      }
-      throw new Error("Unknown FX type: " + b);
-    }, 0);
-};
-
-// TODO: consider stereo channel strips
-export const canSetFx = (type, channelIndex, existingActiveTypes) => {
-  const budgetInUse = getBudgetInUse(existingActiveTypes);
-  const existingChannelType = existingActiveTypes[channelIndex];
-
-  if (type === "channel-strip") {
-    /*
-      Adding a channel-strip is allowed if the budget is not exceeded
-      or if there is already some fx on that channel. If there is already one,
-      the budget can't increase by setting this channel to channel-strip.
-    */
-    return budgetInUse < 4
-      || existingChannelType !== "off";
-  } else if (type === "amp") {
-    /*
-      Adding an amp is allowed if the budget is not exceeded and there is no
-      other amp in use.
-      Only if this channel uses already the amp, it should be allowed to
-      re-set it to amp.
-    */
-    return (
-      (
-        budgetInUse < 3
-        && existingActiveTypes.filter((s) => s === "amp").length === 0
-      )
-      || existingChannelType === "amp"
-    );
-  } else if (type === "off") {
-    return true;
-  } else {
-    throw new Error("Unknown FX type: " + type);
-  }
-};
+export const getDBFSFromSliderValue = (val) => DB_STEPS[val];

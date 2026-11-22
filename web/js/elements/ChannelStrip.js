@@ -1,5 +1,9 @@
 import { html, render } from "../lit.js";
 
+/*
+  One mixer channel. type: "analog", "stereo" (linked pair of analog inputs,
+  shown as one channel like dspMixFx does), "daw" or "master".
+*/
 customElements.define("channel-strip", class extends HTMLElement {
   constructor() {
     super();
@@ -8,32 +12,22 @@ customElements.define("channel-strip", class extends HTMLElement {
   static observedAttributes = [
     "phantom-power-enabled",
     "channel-id",
-    "channel-id-l",
     "channel-id-r",
     "active-mix",
     "volume",
     "pan",
+    "pan-r",
     "mute",
     "solo",
     "hpf-enabled",
     "invert-phase-enabled",
+    "invert-phase-r-enabled",
     "reverb-send",
+    "title",
   ];
 
-  attributeChangedCallback(name, oldValue, newValue) {
-    if ([
-      "active-mix",
-      "phantom-power-enabled",
-      "volume",
-      "pan",
-      "mute",
-      "solo",
-      "hpf-enabled",
-      "invert-phase-enabled",
-      "reverb-send",
-    ].includes(name)) {
-      this.render();
-    }
+  attributeChangedCallback() {
+    if (this.isConnected) this.render();
   }
 
   connectedCallback() {
@@ -41,52 +35,64 @@ customElements.define("channel-strip", class extends HTMLElement {
   }
 
   render() {
+    const type = this.getAttribute("type");
+    const attr = (name) => this.getAttribute(name);
+
+    const panSlider = (channelId, pan, label) => html`<pan-slider
+      .device=${this.device}
+      channel-id=${channelId}
+      active-mix=${attr("active-mix")}
+      pan=${pan}
+      label=${label}
+    ></pan-slider>`;
+
+    let sendTemplate;
+    if (type === "analog" || type === "stereo" || type === "daw") {
+      sendTemplate = html`<send-slider
+        .device=${this.device}
+        send=${attr("reverb-send")}
+        channel-id=${attr("channel-id")}
+      ></send-slider>`;
+    } else {
+      sendTemplate = html`<a
+        class="button master-reverb"
+        href="#master-reverb"
+      >Reverb<br>settings</a>`;
+    }
+
     const template = html`
     <fx-section
       .device=${this.device}
-      type=${this.getAttribute("type")}
-      channel-id=${this.getAttribute("channel-id")}
-      subchannel-id-l=${this.getAttribute("subchannel-id-l")}
-      subchannel-id-r=${this.getAttribute("subchannel-id-r")}
-      active-mix=${this.getAttribute("active-mix")}
-      hpf-available=${this.getAttribute("hpf-available")}
-      hpf-enabled=${this.getAttribute("hpf-enabled")}
-      invert-phase-enabled=${this.getAttribute("invert-phase-enabled")}
+      type=${type}
+      channel-id=${attr("channel-id")}
+      channel-id-r=${attr("channel-id-r") ?? ""}
+      subchannel-id-l=${attr("subchannel-id-l")}
+      subchannel-id-r=${attr("subchannel-id-r")}
+      active-mix=${attr("active-mix")}
+      hpf-available=${attr("hpf-available")}
+      hpf-enabled=${attr("hpf-enabled")}
+      invert-phase-enabled=${attr("invert-phase-enabled")}
+      invert-phase-r-enabled=${attr("invert-phase-r-enabled") ?? ""}
     ></fx-section>
-    ${
-      this.getAttribute("type") === "analog"
-        ? html`<send-slider
-          .device=${this.device}
-          send=${this.getAttribute("reverb-send")}
-          channel-id=${this.getAttribute("channel-id")}
-        ></send-slider>`
-        : this.getAttribute("type") === "master"
-          ? html`<a
-            class="button master-reverb"
-            href="#master-reverb"
-          >Reverb<br>settings</a>`
-          : html`<div class="daw-reverb-placeholder"></div>`
-    }
-    <pan-slider
-      .device=${this.device}
-      channel-id=${this.getAttribute("channel-id")}
-      active-mix=${this.getAttribute("active-mix")}
-      pan=${this.getAttribute("pan")}
-    ></pan-slider>
+    ${sendTemplate}
+    ${type === "stereo"
+      ? html`<div class="pan-pair">
+        ${panSlider(attr("channel-id"), attr("pan"), "Pan L")}
+        ${panSlider(attr("channel-id-r"), attr("pan-r"), "Pan R")}
+      </div>`
+      : panSlider(attr("channel-id"), attr("pan"), "Pan")}
     <volume-slider
       .device=${this.device}
-      type=${this.getAttribute("type")}
-      phantom-power-available=${
-        this.getAttribute("phantom-power-available") === "true"
-      }
-      phantom-power-enabled=${this.getAttribute("phantom-power-enabled")}
-      channel-id=${this.getAttribute("channel-id")}
-      active-mix=${this.getAttribute("active-mix")}
-      volume=${this.getAttribute("volume")}
-      mute=${this.getAttribute("mute")}
-      solo=${this.getAttribute("solo")}
-    /></volume-slider>
-    <span class="title">${this.getAttribute("title")}</span>`;
+      type=${type}
+      phantom-power-available=${attr("phantom-power-available") === "true"}
+      phantom-power-enabled=${attr("phantom-power-enabled")}
+      channel-id=${attr("channel-id")}
+      active-mix=${attr("active-mix")}
+      volume=${attr("volume")}
+      mute=${attr("mute")}
+      solo=${attr("solo")}
+    ></volume-slider>
+    <span class="title">${attr("title")}</span>`;
 
     render(template, this);
   }

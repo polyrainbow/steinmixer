@@ -486,3 +486,150 @@
     flex-direction: column;
   }
 }
+
+@layer utilities {
+  /* linked input pair shown as one stereo channel */
+  channel-strip[type="stereo"] {
+    min-width: 9em;
+
+    .pan-pair {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3em;
+    }
+
+    fx-section .controls .phase-pair {
+      display: flex;
+      gap: 0.1em;
+    }
+  }
+
+  channel-strip[type="daw"] send-slider {
+    min-height: 36px;
+  }
+
+  fx-section .controls select:disabled {
+    opacity: 0.6;
+  }
+
+  interface-settings .sample-rate strong {
+    font-size: large;
+  }
+
+  channel-fx {
+    flex-wrap: wrap;
+
+    .fx-unavailable, .status {
+      margin: 0;
+      font-style: italic;
+    }
+
+    .channel-strip-panel {
+      gap: 0.8em;
+
+      .label {
+        font-size: small;
+        color: var(--darkgrey);
+      }
+
+      .value {
+        font-size: small;
+        font-variant-numeric: tabular-nums;
+      }
+
+      label {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sweet-spot {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        gap: 0.8em;
+
+        & > div {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .sweet-spot-id {
+          font-size: x-small;
+          color: var(--grey);
+        }
+
+        .file-button {
+          display: inline-block;
+          flex-direction: row;
+        }
+
+        .morph input {
+          width: 12rem;
+        }
+      }
+
+      .cs-sections {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5em;
+
+        section {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5em;
+
+          h3 {
+            display: flex;
+            gap: 0.5em;
+            align-items: center;
+            margin: 0;
+          }
+
+          &.bypassed .settings {
+            opacity: 0.6;
+          }
+        }
+
+        .cs-graph {
+          display: flex;
+          gap: 0.4em;
+          align-items: stretch;
+
+          compressor-curve {
+            width: 14rem;
+          }
+        }
+
+        eq-curve {
+          width: 24rem;
+        }
+
+        .settings {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 11rem));
+          max-height: none;
+          gap: 0.5em 1em;
+          padding: 0;
+          font-size: medium;
+
+          input, select {
+            width: 100%;
+          }
+        }
+      }
+
+      button.toggle.enabled {
+        background-color: var(--green);
+      }
+    }
+  }
+}
+
+@layer utilities {
+  fx-section .fx-error {
+    font-size: x-small;
+    color: var(--white);
+    background-color: var(--red);
+    padding: 0 0.2em;
+  }
+}

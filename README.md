@@ -30,13 +30,19 @@ models to test with. However, it should be straight-forward to adapt this tool.
 - Volume control, mute, solo for all analog inputs, and for DAW and Main channel
 - Gain meters for all channels
 - Save and recall 2 independent mixes
+- Scenes: store and recall up to 20 named scenes, save/open them as files
+  (in the structure of dspMixFx's `.UR44` files)
 - Loopback
 - Highpass filter on inputs
 - Phase inversion on inputs
-- Stereo linking of channels
-- Reverb
+- Stereo linking of channels (shown as one stereo channel, like dspMixFx)
+- Reverb, incl. sending the DAW signal to the reverb
 - Guitar amp emulations
-- Channel strip effects (compressor, EQ)
+- Channel strip effects (compressor, EQ) incl. stereo channel strips on linked
+  channels, compressor and EQ curves (EQ editable by dragging), gain
+  reduction and output meters
+- Sweet Spot Morphing: morph knob and loading/saving Sweet Spot Data (`.ssd`)
+- Sample rate display; effects are disabled at 176.4/192 kHz like on the device
 
 ✨ Advantages of Steinmixer over the original:
 
@@ -49,6 +55,15 @@ models to test with. However, it should be straight-forward to adapt this tool.
 The app is written in plain JavaScript. There is no build step required.
 To deploy, just copy the files of the `web` folder to your webspace.
 To develop, run a local web server with `npm run start`.
+Add `?simulator` to the URL (e.g. `/index.html?simulator`) to use a virtual
+UR44 instead of a real device.
+
+Tests: `npm test` runs the unit and integration tests (the controller is
+tested against the virtual device, which speaks the real SysEx protocol).
+`npm run test:hardware` runs the controller against a connected UR44 (macOS,
+needs `swiftc`); it restores the device state afterwards.
+
+The SysEx protocol is documented in [docs/protocol.md](./docs/protocol.md).
 
 # Acknowledgements
 

@@ -18,6 +18,15 @@ customElements.define(
       <h2>Interface settings</h2>
 
       <div class="settings horizontal">
+        <div class="setting sample-rate">
+          <span class="select-label">Sample rate</span>
+          <strong>${this.device.sampleRate / 1000} kHz</strong>
+          ${this.device.fxAvailable
+            ? ""
+            : html`<span class="description">
+              Channel strips and guitar amps are disabled at this rate.
+            </span>`}
+        </div>
         <div class="setting">
           <label class="select-label" for="phones-2-output-select">
             Phones 2 output

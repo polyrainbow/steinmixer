@@ -1,0 +1,290 @@
+/*
+  Styles for <compressor-curve>, <eq-curve>, <gr-meter> and <level-meter>.
+  Uses the CSS variables defined in stylesheet.css (with fallbacks).
+*/
+
+compressor-curve,
+eq-curve {
+  --csv-bg: var(--black, black);
+  --csv-plot-bg: #161616;
+  --csv-grid: var(--darkgrey, #3e3e3e);
+  --csv-label: var(--grey, grey);
+  --csv-curve: var(--yellow, #ffe700);
+  --csv-accent: var(--blue, #0067ff);
+
+  display: block;
+  background: var(--csv-bg);
+  border-radius: 4px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+compressor-curve {
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 1 / 1;
+}
+
+eq-curve {
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 2 / 1;
+  /* let pointer drags on handles work on touch screens */
+  touch-action: none;
+}
+
+.compressor-curve-svg,
+.eq-curve-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+compressor-curve .plot-bg,
+eq-curve .plot-bg {
+  fill: var(--csv-plot-bg);
+}
+
+compressor-curve .grid,
+eq-curve .grid {
+  stroke: var(--csv-grid);
+  stroke-width: 0.5;
+  shape-rendering: crispEdges;
+}
+
+eq-curve .grid.major {
+  stroke: var(--grey, grey);
+  stroke-opacity: 0.6;
+}
+
+compressor-curve .axis-label,
+eq-curve .axis-label {
+  fill: var(--csv-label);
+  font-family: sans-serif;
+  font-size: 8px;
+}
+
+compressor-curve .unity {
+  stroke: var(--grey, grey);
+  stroke-width: 0.75;
+  stroke-dasharray: 2 2;
+}
+
+compressor-curve .threshold {
+  stroke: var(--csv-accent);
+  stroke-width: 0.75;
+  stroke-dasharray: 3 2;
+}
+
+compressor-curve .curve,
+eq-curve .curve {
+  fill: none;
+  stroke: var(--csv-curve);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+compressor-curve .level-dot {
+  fill: var(--green, lime);
+  stroke: var(--black, black);
+  stroke-width: 1;
+}
+
+eq-curve .curve-fill {
+  fill: var(--csv-curve);
+  fill-opacity: 0.12;
+  stroke: none;
+}
+
+eq-curve .band-curve {
+  fill: none;
+  stroke-width: 1;
+  stroke-opacity: 0.55;
+}
+
+eq-curve .band-curve-low { stroke: var(--red, crimson); }
+eq-curve .band-curve-mid { stroke: var(--green, lime); }
+eq-curve .band-curve-high { stroke: var(--blue-alt, rgb(0, 152, 212)); }
+
+eq-curve .eq-handle {
+  cursor: grab;
+  outline: none;
+}
+
+eq-curve.dragging .eq-handle {
+  cursor: grabbing;
+}
+
+eq-curve .eq-handle .hit {
+  fill: transparent;
+}
+
+eq-curve .eq-handle .dot {
+  fill: var(--darkgrey, #3e3e3e);
+  stroke: var(--white, white);
+  stroke-width: 1.5;
+}
+
+eq-curve .eq-handle-low .dot { stroke: var(--red, crimson); }
+eq-curve .eq-handle-mid .dot { stroke: var(--green, lime); }
+eq-curve .eq-handle-high .dot { stroke: var(--blue-alt, rgb(0, 152, 212)); }
+
+eq-curve .eq-handle:hover .dot,
+eq-curve .eq-handle:focus-visible .dot {
+  fill: var(--grey, grey);
+}
+
+eq-curve .eq-handle:focus-visible .dot {
+  stroke: var(--yellow, #ffe700);
+  stroke-width: 2.5;
+}
+
+eq-curve .handle-label {
+  fill: var(--white, white);
+  font-family: sans-serif;
+  font-size: 9px;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+/* bypassed / disabled */
+
+compressor-curve.bypassed .curve,
+eq-curve.bypassed .curve {
+  stroke: var(--grey, grey);
+}
+
+eq-curve.bypassed .curve-fill {
+  fill-opacity: 0;
+}
+
+eq-curve.bypassed .eq-handle,
+eq-curve.disabled .eq-handle {
+  opacity: 0.4;
+}
+
+eq-curve.disabled .eq-handle {
+  cursor: default;
+  pointer-events: none;
+}
+
+compressor-curve.bypassed .level-dot {
+  fill: var(--grey, grey);
+}
+
+/* meters */
+
+gr-meter,
+level-meter {
+  --meter-width: 10px;
+  --meter-height: 120px;
+
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  height: var(--meter-height);
+  padding-right: 18px; /* room for the scale */
+  vertical-align: top;
+}
+
+gr-meter .meter-track,
+level-meter .meter-track {
+  position: relative;
+  flex: 1;
+  width: var(--meter-width);
+  background: var(--black, black);
+  border: 1px solid var(--darkgrey, #3e3e3e);
+  overflow: hidden;
+}
+
+gr-meter .meter-bar,
+level-meter .meter-fill,
+level-meter .meter-mask {
+  position: absolute;
+  inset: 0;
+}
+
+gr-meter .meter-bar {
+  transform: scaleY(0);
+  transform-origin: top;
+  will-change: transform;
+  background: var(--yellow, #ffe700);
+}
+
+level-meter .meter-fill {
+  background: linear-gradient(
+    to top,
+    var(--green, lime) 0%,
+    var(--green, lime) 85%,
+    var(--yellow, #ffe700) 92.5%,
+    var(--red, crimson) 100%
+  );
+}
+
+level-meter .meter-mask {
+  transform-origin: top;
+  will-change: transform;
+  background: var(--black, black);
+}
+
+level-meter .meter-peak {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  margin-bottom: -1px;
+  background: var(--white, white);
+  visibility: hidden;
+}
+
+gr-meter .meter-scale,
+level-meter .meter-scale {
+  position: absolute;
+  right: 0;
+  width: 16px;
+  bottom: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+level-meter .meter-scale {
+  /* the OVER indicator sits above the track */
+  top: 14px;
+}
+
+gr-meter .meter-tick,
+level-meter .meter-tick {
+  position: absolute;
+  right: 0;
+  font-family: sans-serif;
+  font-size: 8px;
+  line-height: 1;
+  color: var(--grey, grey);
+  transform: translateY(-50%);
+}
+
+level-meter .meter-tick {
+  transform: translateY(50%);
+}
+
+level-meter .meter-over {
+  height: 12px;
+  padding: 0 2px;
+  font-family: sans-serif;
+  font-size: 7px;
+  line-height: 12px;
+  color: var(--grey, grey);
+  background: var(--darkgrey, #3e3e3e);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+level-meter .meter-over.active {
+  color: var(--white, white);
+  background: var(--red, crimson);
+}

@@ -44,6 +44,7 @@ customElements.define("volume-slider", class extends HTMLElement {
 
     const handleMuteClick = () => {
       this.dispatchEvent(new CustomEvent("mute", {
+        bubbles: true,
         detail: {
           muted: !muted,
           channelId,
@@ -56,6 +57,7 @@ customElements.define("volume-slider", class extends HTMLElement {
 
     const handleSoloClick = () => {
       this.dispatchEvent(new CustomEvent("solo", {
+        bubbles: true,
         detail: {
           soloed: !soloed,
           channelId,
@@ -70,6 +72,7 @@ customElements.define("volume-slider", class extends HTMLElement {
       const newVolume = parseInt(e.target.value);
 
       this.dispatchEvent(new CustomEvent("volume", {
+        bubbles: true,
         detail: {
           volume: newVolume,
           channelId,
@@ -84,6 +87,7 @@ customElements.define("volume-slider", class extends HTMLElement {
       const volume = 103;
 
       this.dispatchEvent(new CustomEvent("volume", {
+        bubbles: true,
         detail: {
           volume,
           channelId,

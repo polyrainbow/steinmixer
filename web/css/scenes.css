@@ -1,0 +1,215 @@
+/*
+  Styles for <scene-manager>.
+  Uses the CSS variables defined in stylesheet.css (with fallbacks).
+*/
+
+scene-manager {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  background-color: var(--lightgrey, lightgray);
+  padding: 1em;
+  box-sizing: border-box;
+
+  .scene-manager {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+
+    &[aria-busy="true"] {
+      cursor: progress;
+    }
+  }
+
+  h2 {
+    margin: 0;
+  }
+
+  h3 {
+    margin: 0;
+    font-size: medium;
+  }
+
+  .scene-current {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4em;
+
+    .scene-current-label {
+      font-size: small;
+      color: var(--darkgrey, #3e3e3e);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .scene-current-name {
+      font-size: large;
+      font-weight: bold;
+    }
+
+    .scene-current-slot {
+      font-size: small;
+      color: var(--darkgrey, #3e3e3e);
+    }
+
+    .scene-modified {
+      font-size: small;
+      font-weight: bold;
+      color: var(--black, black);
+      background-color: var(--yellow, #ffe700);
+      padding: 0.1em 0.4em;
+    }
+  }
+
+  .scene-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em;
+
+    & > label {
+      font-weight: bold;
+      margin-right: 0.2em;
+    }
+  }
+
+  select {
+    font-size: medium;
+    /* keep the slot numbers aligned */
+    font-variant-numeric: tabular-nums;
+    min-width: 12em;
+  }
+
+  button {
+    padding: 0.3rem 0.7rem;
+
+    &.primary {
+      background-color: var(--blue, #0067ff);
+      border-color: var(--blue, #0067ff);
+      color: var(--white, white);
+    }
+
+    &.danger {
+      background-color: var(--red, crimson);
+      border-color: var(--red, crimson);
+      color: var(--white, white);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
+  button:focus-visible,
+  select:focus-visible,
+  input:focus-visible {
+    outline: 0.15rem solid var(--blue, #0067ff);
+    outline-offset: 0.1rem;
+  }
+
+  .scene-panel {
+    background-color: var(--white, white);
+    border: 0.1rem solid var(--grey, grey);
+    padding: 0.75em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6em;
+    max-width: 32em;
+
+    &.scene-confirm {
+      border-color: var(--red, crimson);
+    }
+
+    p {
+      margin: 0;
+    }
+
+    fieldset {
+      border: 0;
+      margin: 0;
+      padding: 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6em;
+    }
+  }
+
+  .scene-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2em;
+
+    label {
+      font-size: small;
+      font-weight: bold;
+    }
+
+    input[type="text"] {
+      font-size: medium;
+      padding: 0.2em 0.3em;
+      max-width: 16em;
+      user-select: text;
+    }
+  }
+
+  .scene-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+  }
+
+  .scene-warning {
+    font-size: small;
+    border-left: 0.3em solid var(--yellow, #ffe700);
+    padding-left: 0.5em;
+  }
+
+  .scene-import-errors {
+    font-size: small;
+
+    summary {
+      cursor: pointer;
+      color: var(--red, crimson);
+    }
+
+    ul {
+      margin: 0.3em 0 0;
+      padding-left: 1.2em;
+    }
+  }
+
+  .scene-file-row {
+    padding-top: 0.5em;
+    border-top: 0.1rem solid var(--grey, grey);
+  }
+
+  .scene-status {
+    margin: 0;
+    min-height: 1.2em;
+    font-size: small;
+
+    &.busy {
+      color: var(--darkgrey, #3e3e3e);
+      font-style: italic;
+    }
+
+    &.info {
+      color: var(--black, black);
+    }
+
+    &.error {
+      color: var(--red, crimson);
+      font-weight: bold;
+    }
+  }
+
+  .scene-note {
+    margin: 0;
+    font-size: small;
+    color: var(--darkgrey, #3e3e3e);
+  }
+}

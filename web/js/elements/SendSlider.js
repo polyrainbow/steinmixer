@@ -27,6 +27,7 @@ customElements.define("send-slider", class extends HTMLElement {
       const newSend = parseInt(e.target.value);
 
       this.dispatchEvent(new CustomEvent("send", {
+        bubbles: true,
         detail: {
           send: newSend,
           channelId,
@@ -41,6 +42,7 @@ customElements.define("send-slider", class extends HTMLElement {
       const newSend = 0;
 
       this.dispatchEvent(new CustomEvent("send", {
+        bubbles: true,
         detail: {
           send: newSend,
           channelId,
@@ -60,6 +62,7 @@ customElements.define("send-slider", class extends HTMLElement {
       @input=${handleInput}
       @dblclick=${handleDblClick}
       title="Reverb send"
+      aria-label="Reverb send"
     >
     <span>${
       getDBFSLabel(send, val => this.device.getDBFSFromSliderValue(val))

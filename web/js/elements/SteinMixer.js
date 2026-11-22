@@ -1,9 +1,17 @@
-import UR44Simulator from "../devices/UR44Simulator.js";
 import "./StereoInput.js";
+import "./SceneManager.js";
 import { html, render, live } from "../lit.js";
 import UR44 from "../devices/UR44.js";
+import UR44VirtualDevice from "../devices/UR44VirtualDevice.js";
 
-const USE_SIMULATOR = false;
+/* Open the app with ?simulator to use a virtual device. */
+const USE_SIMULATOR = new URLSearchParams(location.search).has("simulator");
+
+/*
+  The device mirrors these params between the channels of a linked pair, so
+  for linked channels we always address the left channel.
+*/
+const LINKED_LEFT_PARAMS = ["Volume", "Mute", "Solo", "ReverbSend", "HPF"];
 
 customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
   constructor() {
@@ -13,353 +21,280 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
   status = "loading";
   params;
   connectionName;
-  openSidePanel = null;
   activeMix = 0;
   device;
 
   async connectedCallback() {
     this.render();
 
-    const paramUpdateHandler = () => {
-      this.render();
+    const messageHandler = (message) => {
+      if (message.type === "local-change") {
+        // every change made by this app, for the scene "modified" marker
+        this.#paramChanged();
+      } else if (message.type === "state-refresh") {
+        this.renderAll();
+      } else {
+        this.render();
+      }
     };
 
     try {
-      this.device = USE_SIMULATOR ? new UR44Simulator() : new UR44();
+      this.device = USE_SIMULATOR
+        ? new UR44(new UR44VirtualDevice().portProvider)
+        : new UR44();
       const { params, connectionName } = await this.device.open(
-        paramUpdateHandler,
+        messageHandler,
       );
       this.params = params;
       this.connectionName = connectionName;
       this.status = "ready";
+      this.#addEventListeners();
       this.render();
-
-      document.querySelector("app-header")
-        .addEventListener("close-session-request", (e) => {
-          this.device.closeSession();
-          this.status = "session-closed";
-          this.render();
-        });
-
-      Array.from(document.querySelectorAll("stereo-input"))
-        .forEach(si => {
-          si.addEventListener("link-channels", (e) => {
-            const channelIndex = this.device.getChannelIndexFromChannelId(
-              e.detail.channelIdL,
-            );
-            const newValue = e.detail.linked;
-            this.device.updateParamValue(`Input${channelIndex}Link`, newValue);
-          });
-        });
-
-      Array.from(document.querySelectorAll("volume-slider"))
-        .forEach(vs => {
-          vs.addEventListener("volume", (e) => {
-            let paramKey;
-            const mix = parseInt(e.detail.mix);
-
-            if (e.detail.channelId === "daw") {
-              paramKey = `Mix${mix}DAWVolume`;
-            } else if (e.detail.channelId === "master") {
-              paramKey = `Mix${mix}MainVolume`;
-            } else {
-              const originalChannelId = e.detail.channelId;
-              const originalChannelIndex
-                = this.device.getChannelIndexFromChannelId(
-                  originalChannelId,
-                );
-              let actualChannelIndex;
-
-              // when two channels are linked and user moves the right slider,
-              // we actually want to change the value of the left slider, so
-              // let's adjust the channelIndex if needed.
-              if (
-                originalChannelIndex === 1
-                && this.params.Input0Link === 1
-              ) {
-                actualChannelIndex = 0;
-              } else if (
-                originalChannelIndex === 3
-                && this.params.Input2Link === 1
-              ) {
-                actualChannelIndex = 2;
-              } else if (
-                originalChannelIndex === 5
-                && this.params.Input4Link === 1
-              ) {
-                actualChannelIndex = 4;
-              } else {
-                actualChannelIndex = originalChannelIndex;
-              }
-
-              paramKey = `Mix${mix}Input${actualChannelIndex}Volume`;
-            }
-            this.device.updateParamValue(paramKey, e.detail.volume);
-            this.render();
-          });
-
-          vs.addEventListener("mute", (e) => {
-            const mix = parseInt(e.detail.mix);
-            const channelId = e.detail.channelId;
-            const value = e.detail.muted ? 0 : 1;
-            let paramKey;
-
-            if (channelId === "daw") {
-              paramKey = `Mix${mix}DAWMute`;
-            } else if (channelId === "master") {
-              paramKey = `Mix${mix}MainMute`;
-            } else {
-              paramKey = `Mix${mix}Input${
-                this.device.getChannelIndexFromChannelId(channelId)
-              }Mute`;
-            }
-            this.device.updateParamValue(paramKey, value);
-            this.render();
-          });
-
-          vs.addEventListener("solo", (e) => {
-            const mix = parseInt(e.detail.mix);
-            const value = e.detail.soloed ? 1 : 0;
-            let paramKey;
-
-            if (e.detail.channelId === "daw") {
-              paramKey = `Mix${mix}DAWSolo`;
-            } else if (e.detail.channelId === "master") {
-              paramKey = `Mix${mix}MainSolo`;
-            } else {
-              paramKey = `Mix${mix}Input${
-                this.device.getChannelIndexFromChannelId(e.detail.channelId)
-              }Solo`;
-            }
-            this.device.updateParamValue(paramKey, value);
-            this.render();
-          });
-        });
-
-      Array.from(document.querySelectorAll("pan-slider"))
-        .forEach(ps => {
-          ps.addEventListener("pan", (e) => {
-            const { channelId, pan } = e.detail;
-            const mix = parseInt(e.detail.mix);
-            let paramKey;
-
-            if (channelId === "daw") {
-              paramKey = `Mix${mix}DAWPan`;
-            } else if (channelId === "master") {
-              paramKey = `Mix${mix}MainPan`;
-            } else {
-              paramKey = `Mix${mix}Input${
-                this.device.getChannelIndexFromChannelId(channelId)
-              }Pan`;
-            }
-            this.device.updateParamValue(paramKey, pan);
-            this.render();
-          });
-        });
-
-      Array.from(document.querySelectorAll("send-slider"))
-        .forEach(ps => {
-          ps.addEventListener("send", (e) => {
-            const paramKey
-              = `Input${
-                this.device.getChannelIndexFromChannelId(e.detail.channelId)
-              }ReverbSend`;
-            this.device.updateParamValue(paramKey, e.detail.send);
-            this.render();
-          });
-        });
-
-      Array.from(document.querySelectorAll("fx-section"))
-        .forEach(fxSection => {
-          fxSection.addEventListener("toggle-hpf", (e) => {
-            const paramKey
-              = `Input${
-                this.device.getChannelIndexFromChannelId(e.detail.channelId)
-              }HPFEnabled`;
-            const newValue = Math.abs(1 - this.params[paramKey]);
-            this.device.updateParamValue(paramKey, newValue);
-            this.render();
-          });
-
-          fxSection.addEventListener("toggle-invert-phase", (e) => {
-            const paramKey
-              = `Input${
-                this.device.getChannelIndexFromChannelId(e.detail.channelId)
-              }InvertPhase`;
-            const newValue = Math.abs(1 - this.params[paramKey]);
-            this.device.updateParamValue(paramKey, newValue);
-            this.render();
-          });
-        });
     } catch (e) {
       if (e.name === "NotAllowedError") {
         this.status = "not-allowed";
-        this.render();
-      } else if (
-        e.message === "DEVICE_NOT_FOUND"
-      ) {
+      } else if (e.message === "DEVICE_NOT_FOUND") {
         this.status = "no-interface";
-        this.render();
       } else {
         this.status = "unknown-error";
         console.error(e);
-        this.render();
       }
+      this.render();
     }
+  }
+
+  /* re-render everything incl. the panels which render themselves */
+  renderAll() {
+    this.render();
+    this.querySelectorAll("fx-section, channel-fx, master-reverb")
+      .forEach((el) => el.render());
+    this.querySelector("interface-settings")?.render();
+  }
+
+  #paramChanged() {
+    this.querySelector("scene-manager")?.markModified?.();
+  }
+
+  #update(paramKey, value) {
+    this.device.updateParamValue(paramKey, value);
+    this.render();
+  }
+
+  #inputParamKey(prefix, channelId, suffix) {
+    let channelIndex = this.device.getChannelIndexFromChannelId(channelId);
+    if (
+      LINKED_LEFT_PARAMS.some((p) => suffix.startsWith(p))
+      && this.device.isLinked(channelIndex)
+    ) {
+      channelIndex -= channelIndex % 2;
+    }
+    return `${prefix}Input${channelIndex}${suffix}`;
+  }
+
+  #addEventListeners() {
+    this.addEventListener("close-session-request", () => {
+      this.device.closeSession();
+      this.status = "session-closed";
+      this.render();
+    });
+
+    this.addEventListener("link-channels", async (e) => {
+      const channelIndex = this.device.getChannelIndexFromChannelId(
+        e.detail.channelIdL,
+      );
+      await this.device.updateParamValue(
+        `Input${channelIndex}Link`, e.detail.linked,
+      );
+      this.renderAll();
+    });
+
+    this.addEventListener("volume", (e) => {
+      const mix = parseInt(e.detail.mix);
+      const { channelId } = e.detail;
+      let paramKey;
+      if (channelId === "daw") {
+        paramKey = `Mix${mix}DAWVolume`;
+      } else if (channelId === "master") {
+        paramKey = `Mix${mix}MainVolume`;
+      } else {
+        paramKey = this.#inputParamKey(`Mix${mix}`, channelId, "Volume");
+      }
+      this.#update(paramKey, e.detail.volume);
+    });
+
+    this.addEventListener("mute", (e) => {
+      const mix = parseInt(e.detail.mix);
+      const { channelId } = e.detail;
+      const value = e.detail.muted ? 0 : 1;
+      let paramKey;
+      if (channelId === "daw") {
+        paramKey = `Mix${mix}DAWMute`;
+      } else if (channelId === "master") {
+        paramKey = `Mix${mix}MainMute`;
+      } else {
+        paramKey = this.#inputParamKey(`Mix${mix}`, channelId, "Mute");
+      }
+      this.#update(paramKey, value);
+    });
+
+    this.addEventListener("solo", (e) => {
+      const mix = parseInt(e.detail.mix);
+      const { channelId } = e.detail;
+      const value = e.detail.soloed ? 1 : 0;
+      const paramKey = channelId === "daw"
+        ? `Mix${mix}DAWSolo`
+        : this.#inputParamKey(`Mix${mix}`, channelId, "Solo");
+      this.#update(paramKey, value);
+    });
+
+    this.addEventListener("pan", (e) => {
+      const { channelId, pan } = e.detail;
+      const mix = parseInt(e.detail.mix);
+      let paramKey;
+      if (channelId === "daw") {
+        paramKey = `Mix${mix}DAWPan`;
+      } else if (channelId === "master") {
+        paramKey = `Mix${mix}MainPan`;
+      } else {
+        paramKey = this.#inputParamKey(`Mix${mix}`, channelId, "Pan");
+      }
+      this.#update(paramKey, pan);
+    });
+
+    this.addEventListener("send", (e) => {
+      if (e.detail.channelId === "daw") {
+        // the DAW send has a separate on/off switch, keep it in sync
+        const enabled = e.detail.send > 0 ? 1 : 0;
+        if (this.params.DAWReverbSendEnabled !== enabled) {
+          this.device.updateParamValue("DAWReverbSendEnabled", enabled);
+        }
+        this.#update("DAWReverbSend", e.detail.send);
+        return;
+      }
+      this.#update(
+        this.#inputParamKey("", e.detail.channelId, "ReverbSend"),
+        e.detail.send,
+      );
+    });
+
+    this.addEventListener("toggle-hpf", (e) => {
+      const paramKey = this.#inputParamKey(
+        "", e.detail.channelId, "HPFEnabled",
+      );
+      this.#update(paramKey, 1 - this.params[paramKey]);
+    });
+
+    this.addEventListener("toggle-invert-phase", (e) => {
+      const index = this.device.getChannelIndexFromChannelId(
+        e.detail.channelId,
+      );
+      const paramKey = `Input${index}InvertPhase`;
+      this.#update(paramKey, 1 - this.params[paramKey]);
+    });
+
+    this.addEventListener("fx-changed", () => this.renderAll());
+
+    this.addEventListener("scene-recalled", () => this.renderAll());
+  }
+
+  #renderStatus(message, { reload = true, image = false } = {}) {
+    render(html`<app-header></app-header>
+      <p>${message}</p>
+      ${image
+        ? html`<img src="./img/allow-midi-access.png" width="300"
+          alt="Browser prompt allowing MIDI access"><br>`
+        : ""}
+      ${reload
+        ? html`<button @click=${() => location.reload()}>
+          Reload page to check again
+        </button>`
+        : ""}`, this);
   }
 
   render() {
     if (this.status === "unknown-error") {
-      const template
-        = "An unknown error occurred. Please check the console for more info.";
-      render(template, this);
+      this.#renderStatus(
+        "An unknown error occurred. Please check the console for more info.",
+        { reload: false },
+      );
       return;
     } else if (this.status === "no-interface") {
-      const template
-        = html`<app-header></app-header>
-        <p>Could not find audio interface. Make sure it is connected.
-        <br>
-        <button @click=${() => location.reload()}>
-          Reload page to check again
-        </button>`;
-      render(template, this);
+      this.#renderStatus(html`Could not find audio interface. Make sure it is
+        connected. You can also <a href="?simulator">try the simulator</a>.`);
       return;
     } else if (this.status === "session-closed") {
-      const template
-        = html`<app-header></app-header>
-        <p>The session has been closed. To connect again, please reload the page.</p>
-        <button @click=${() => location.reload()}>
-          Reload page to connect again
-        </button>`;
-      render(template, this);
+      this.#renderStatus(
+        "The session has been closed. To connect again, please reload the "
+          + "page.",
+      );
       return;
     } else if (this.status === "not-allowed") {
-      const template
-        = html`<app-header></app-header>
-        <p>
-          This website is not allowed to access and control MIDI devices.
-          Please enable access via the icon in your address bar.
-        </p>
-        <img src="./img/allow-midi-access.png" width="300">
-        <br>
-        <button @click=${() => location.reload()}>
-          Reload page to check again
-        </button>`;
-      render(template, this);
+      this.#renderStatus(html`This website is not allowed to access and
+        control MIDI devices. Please enable access via the icon in your
+        address bar.`, { image: true });
       return;
     } else if (this.status === "loading") {
-      const template = "Loading...";
-      render(template, this);
+      render("Loading...", this);
       return;
     }
 
     const mix = this.activeMix;
     const params = this.params;
 
+    const stereoInput = (left, extra = {}) => {
+      const right = left + 1;
+      return html`<stereo-input
+        .device=${this.device}
+        link-inputs=${params[`Input${left}Link`]}
+        title-l=${UR44.INPUT_CHANNEL_TITLES[left]}
+        title-r=${UR44.INPUT_CHANNEL_TITLES[right]}
+        channel-id-l=${UR44.INPUT_CHANNEL_IDS[left]}
+        channel-id-r=${UR44.INPUT_CHANNEL_IDS[right]}
+        volume-l=${params[`Mix${mix}Input${left}Volume`]}
+        volume-r=${params[`Mix${mix}Input${right}Volume`]}
+        phantom-power-available=${extra.phantom ? "true" : "false"}
+        phantom-power-enabled=${extra.phantom ? params[extra.phantom] : 0}
+        active-mix=${mix}
+        pan-l=${params[`Mix${mix}Input${left}Pan`]}
+        pan-r=${params[`Mix${mix}Input${right}Pan`]}
+        mute-l=${params[`Mix${mix}Input${left}Mute`]}
+        mute-r=${params[`Mix${mix}Input${right}Mute`]}
+        solo-l=${params[`Mix${mix}Input${left}Solo`]}
+        solo-r=${params[`Mix${mix}Input${right}Solo`]}
+        hpf-available=${extra.hpf ? "true" : "false"}
+        hpf-l-enabled=${extra.hpf ? params[`Input${left}HPFEnabled`] : 0}
+        hpf-r-enabled=${extra.hpf ? params[`Input${right}HPFEnabled`] : 0}
+        invert-phase-l-enabled=${params[`Input${left}InvertPhase`]}
+        invert-phase-r-enabled=${params[`Input${right}InvertPhase`]}
+        reverb-send-l=${params[`Input${left}ReverbSend`]}
+        reverb-send-r=${params[`Input${right}ReverbSend`]}
+      ></stereo-input>`;
+    };
+
+    const selectMix = (newMix) => {
+      this.device.selectActiveMix(newMix);
+      this.activeMix = newMix;
+      this.renderAll();
+    };
+
     const template = html`
     <app-header connection-name=${this.connectionName}></app-header>
-    <div class="mix-select">
-      <label>
+    <scene-manager .device=${this.device}></scene-manager>
+    <div class="mix-select" role="radiogroup" aria-label="Mix">
+      ${[0, 1].map((m) => html`<label>
         <input
           type="radio"
           name="mix-select"
-          .checked=${live(mix === 0)}
-          @click=${() => {
-            this.device.selectActiveMix(0);
-            this.activeMix = 0;
-            this.render();
-          }}
+          .checked=${live(mix === m)}
+          @click=${() => selectMix(m)}
         >
-        Mix 1
-      </label>
-      <label>
-        <input
-          type="radio"
-          name="mix-select"
-          .checked=${live(mix === 1)}
-          @click=${() => {
-            this.device.selectActiveMix(1);
-            this.activeMix = 1;
-            this.render();
-          }}
-        >
-        Mix 2
-        </label>
+        Mix ${m + 1}
+      </label>`)}
     </div>
     <div class="mixer-container">
-      <stereo-input
-        .device=${this.device}
-        link-inputs=${params.Input0Link}
-        title-l=${UR44.INPUT_CHANNEL_TITLES[0]}
-        title-r=${UR44.INPUT_CHANNEL_TITLES[1]}
-        channel-id-l="analog1"
-        channel-id-r="analog2"
-        volume-l=${params[`Mix${mix}Input0Volume`]}
-        volume-r=${params[`Mix${mix}Input1Volume`]}
-        phantom-power-available="true"
-        phantom-power-enabled="${params.PhantomPower01}"
-        active-mix=${this.activeMix}
-        pan-l=${params[`Mix${mix}Input0Pan`]}
-        pan-r=${params[`Mix${mix}Input1Pan`]}
-        mute-l=${params[`Mix${mix}Input0Mute`]}
-        mute-r=${params[`Mix${mix}Input1Mute`]}
-        solo-l=${params[`Mix${mix}Input0Solo`]}
-        solo-r=${params[`Mix${mix}Input1Solo`]}
-        hpf-available="true"
-        hpf-l-enabled=${params.Input0HPFEnabled}
-        hpf-r-enabled=${params.Input1HPFEnabled}
-        invert-phase-l-enabled=${params.Input0InvertPhase}
-        invert-phase-r-enabled=${params.Input1InvertPhase}
-        reverb-send-l=${params.Input0ReverbSend}
-        reverb-send-r=${params.Input1ReverbSend}
-      ></stereo-input>
-      <stereo-input
-        .device=${this.device}
-        link-inputs=${params.Input2Link}
-        title-l=${UR44.INPUT_CHANNEL_TITLES[2]}
-        title-r=${UR44.INPUT_CHANNEL_TITLES[3]}
-        channel-id-l="analog3"
-        channel-id-r="analog4"
-        volume-l=${params[`Mix${mix}Input2Volume`]}
-        volume-r=${params[`Mix${mix}Input3Volume`]}
-        phantom-power-available="true"
-        phantom-power-enabled="${params.PhantomPower23}"
-        active-mix=${this.activeMix}
-        pan-l=${params[`Mix${mix}Input2Pan`]}
-        pan-r=${params[`Mix${mix}Input3Pan`]}
-        mute-l=${params[`Mix${mix}Input2Mute`]}
-        mute-r=${params[`Mix${mix}Input3Mute`]}
-        solo-l=${params[`Mix${mix}Input2Solo`]}
-        solo-r=${params[`Mix${mix}Input3Solo`]}
-        hpf-available="true"
-        hpf-l-enabled=${params.Input2HPFEnabled}
-        hpf-r-enabled=${params.Input3HPFEnabled}
-        invert-phase-l-enabled=${params.Input2InvertPhase}
-        invert-phase-r-enabled=${params.Input3InvertPhase}
-        reverb-send-l=${params.Input2ReverbSend}
-        reverb-send-r=${params.Input3ReverbSend}
-      ></stereo-input>
-      <stereo-input
-        .device=${this.device}
-        link-inputs=${params.Input4Link}
-        title-l=${UR44.INPUT_CHANNEL_TITLES[4]}
-        title-r=${UR44.INPUT_CHANNEL_TITLES[5]}
-        channel-id-l="analog5"
-        channel-id-r="analog6"
-        volume-l=${params[`Mix${mix}Input4Volume`]}
-        volume-r=${params[`Mix${mix}Input5Volume`]}
-        active-mix=${this.activeMix}
-        pan-l=${params[`Mix${mix}Input4Pan`]}
-        pan-r=${params[`Mix${mix}Input5Pan`]}
-        mute-l=${params[`Mix${mix}Input4Mute`]}
-        mute-r=${params[`Mix${mix}Input5Mute`]}
-        solo-l=${params[`Mix${mix}Input4Solo`]}
-        solo-r=${params[`Mix${mix}Input5Solo`]}
-        invert-phase-l-enabled=${params.Input4InvertPhase}
-        invert-phase-r-enabled=${params.Input5InvertPhase}
-        reverb-send-l=${params.Input4ReverbSend}
-        reverb-send-r=${params.Input5ReverbSend}
-      ></stereo-input>
+      ${stereoInput(0, { phantom: "PhantomPower01", hpf: true })}
+      ${stereoInput(2, { phantom: "PhantomPower23", hpf: true })}
+      ${stereoInput(4)}
       <channel-strip
         .device=${this.device}
         title="DAW"
@@ -367,11 +302,12 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         channel-id="daw"
         subchannel-id-l="dawL"
         subchannel-id-r="dawR"
-        active-mix=${this.activeMix}
+        active-mix=${mix}
         volume=${params[`Mix${mix}DAWVolume`]}
         pan=${params[`Mix${mix}DAWPan`]}
         mute=${params[`Mix${mix}DAWMute`]}
         solo=${params[`Mix${mix}DAWSolo`]}
+        reverb-send=${params.DAWReverbSendEnabled ? params.DAWReverbSend : 0}
       ></channel-strip>
       <channel-strip
         .device=${this.device}
@@ -380,14 +316,10 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
         channel-id="master"
         subchannel-id-l="masterL"
         subchannel-id-r="masterR"
-        active-mix=${this.activeMix}
+        active-mix=${mix}
         volume=${params[`Mix${mix}MainVolume`]}
         pan=${params[`Mix${mix}MainPan`]}
         mute=${params[`Mix${mix}MainMute`]}
-        @open-master-reverb=${() => {
-          this.openSidePanel = "reverb";
-          this.render();
-        }}
       ></channel-strip>
     </div>
 
@@ -397,7 +329,7 @@ customElements.define("stein-mixer", class SteinMixer extends HTMLElement {
 
     <master-reverb
       .device=${this.device}
-      active-mix=${this.activeMix}
+      active-mix=${mix}
     ></master-reverb>
 
     <interface-settings

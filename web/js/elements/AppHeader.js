@@ -28,7 +28,9 @@ customElements.define("app-header", class AppHeader extends HTMLElement {
       ${connectionName
         ? html`<button
           @click=${() => {
-            this.dispatchEvent(new CustomEvent("close-session-request"));
+            this.dispatchEvent(
+              new CustomEvent("close-session-request", { bubbles: true }),
+            );
           }}
         >Close Session</button>`
         : html``

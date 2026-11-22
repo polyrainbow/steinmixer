@@ -1,327 +1,219 @@
-import UR44, { AMP_TYPES } from "../devices/UR44.js";
-import { html, render } from "../lit.js";
+import UR44, { AMP_TYPES, MORPH_MAX } from "../devices/UR44.js";
+import { html, render, live } from "../lit.js";
+import {
+  formatParam,
+  PARAM_RANGES,
+  KNEE_NAMES,
+} from "../devices/channelStripMath.js";
+import {
+  parseSweetSpotData,
+  buildSweetSpotData,
+} from "../devices/sweetSpotData.js";
+import "./CompressorCurve.js";
+import "./EQCurve.js";
+import "./GainReductionMeter.js";
 
-const getChannelStripTemplate = (channelIndex, device) => {
-  const deviceSettings = device.settings;
-  const channelTitle = UR44.INPUT_CHANNEL_TITLES[channelIndex];
-  const stackIndex = device.fxState[channelIndex].stackIndex;
+/* keys used by channelStripMath / the curve elements -> device params */
+const STRIP_PARAMS = {
+  compBypass: "ChannelStripCompEnabled",
+  drive: "ChannelStripCompDrive",
+  attack: "ChannelStripCompAttack",
+  release: "ChannelStripCompRelease",
+  ratio: "ChannelStripCompRatio",
+  knee: "ChannelStripCompKnee",
+  threshOfst: "ChannelStripCompThreshOffset",
+  makeupOfst: "ChannelStripCompMakeupOffset",
+  sidechainF: "ChannelStripCompSideChFreq",
+  sidechainG: "ChannelStripCompSideChGain",
+  sidechainQ: "ChannelStripCompSideChQ",
+  eqBypass: "ChannelStripEQEnabled",
+  lowFreq: "ChannelStripEQLowFreq",
+  lowGain: "ChannelStripEQLowGain",
+  midFreq: "ChannelStripEQMidFreq",
+  midGain: "ChannelStripEQMidGain",
+  midQ: "ChannelStripEQMidQ",
+  highFreq: "ChannelStripEQHighFreq",
+  highGain: "ChannelStripEQHighGain",
+  totalGain: "ChannelStripTotalGain",
+};
+
+export const toMathParams = (strip) => {
+  return Object.fromEntries(
+    Object.entries(STRIP_PARAMS).map(([key, name]) => [key, strip[name]]),
+  );
+};
+
+const getChannelTitle = (channelIndex, stereo) => {
+  if (!stereo) return UR44.INPUT_CHANNEL_TITLES[channelIndex];
+  return `${UR44.INPUT_CHANNEL_TITLES[channelIndex]}/${channelIndex + 2}`;
+};
+
+const downloadBytes = (bytes, fileName) => {
+  const url = URL.createObjectURL(
+    new Blob([bytes], { type: "application/octet-stream" }),
+  );
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+const getChannelStripTemplate = (channelIndex, device, host) => {
+  const { stackIndex, stereo } = device.fxState[channelIndex];
+  const strip = device.channelStripSettings[stackIndex];
+  const params = toMathParams(strip);
+  const sweetSpot = device.sweetSpots[stackIndex] ?? { id: "", name: "" };
+  const title = getChannelTitle(channelIndex, stereo);
+  const compOn = strip.ChannelStripCompEnabled === 0;
+  const eqOn = strip.ChannelStripEQEnabled === 0;
+
+  const update = (key, value) => {
+    device.updateParamValue(STRIP_PARAMS[key], value, stackIndex);
+    host.render();
+  };
+
+  const slider = (key, label) => {
+    const range = PARAM_RANGES[key];
+    return html`<label>
+      <span class="label">${label}</span>
+      <input
+        type="range"
+        min=${range.min}
+        max=${range.max}
+        .value=${live(params[key])}
+        aria-valuetext=${formatParam(key, params[key])}
+        @input=${(e) => update(key, parseInt(e.target.value))}
+        @dblclick=${() => update(key, range.default)}
+      >
+      <span class="value">${formatParam(key, params[key])}</span>
+    </label>`;
+  };
+
+  const toggle = (key, on, label) => html`<button
+    class="toggle ${on ? "enabled" : ""}"
+    aria-pressed=${on ? "true" : "false"}
+    @click=${() => update(key, on ? 1 : 0)}
+  >${label} ${on ? "on" : "off"}</button>`;
+
+  const morph = strip.ChannelStripMorphing;
 
   return html`
-    <div class="channel-fx-panel">
-      <h2>${channelTitle}: Channel strip</h2>
-      <div class="settings-group">
-        <div class="settings">
-          <h3>Compressor</h3>
-          <label>
-            Attack
-            <input
-              type="range"
-              min="57"
-              max="283"
-              value="${device.channelStripSettings[stackIndex].attack}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripCompAttack",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-          <label>
-            Release
-            <input
-              type="range"
-              min="24"
-              max="300"
-              value="${device.channelStripSettings[stackIndex].release}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripCompRelease",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-          <label>
-            Ratio
-            <input
-              type="range"
-              min="0"
-              max="120"
-              value="${device.channelStripSettings[stackIndex].ratio}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripCompRatio",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-          <label>
-            Knee
-            <input
-              type="range"
-              min="0"
-              max="2"
-              value="${device.channelStripSettings[stackIndex].knee}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripCompKnee",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
+    <div class="channel-fx-panel channel-strip-panel" data-stack=${stackIndex}>
+      <h2>${title}: Channel strip${stereo ? " (stereo)" : ""}</h2>
+      <div class="sweet-spot">
+        <div>
+          <span class="label">Sweet Spot Data</span>
+          <strong class="sweet-spot-name">${sweetSpot.name || "–"}</strong>
+          <span class="sweet-spot-id">${sweetSpot.id}</span>
         </div>
-        <div class="settings">
-          <h3>Sidechain</h3>
-          <label>
-            Q
-            <input
-              type="range"
-              min="0"
-              max="60"
-              value="${device.channelStripSettings[stackIndex].sidechainQ}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripCompSideChQ",
-                  parseInt(value),
-                  stackIndex,
+        <label class="button file-button">
+          Load .ssd…
+          <input
+            type="file"
+            accept=".ssd"
+            hidden
+            @change=${async (e) => {
+              const file = e.target.files[0];
+              e.target.value = "";
+              if (!file) return;
+              try {
+                const data = parseSweetSpotData(
+                  new Uint8Array(await file.arrayBuffer()), file.name,
                 );
-              }}
-            >
-          </label>
-          <label>
-            F
-            <input
-              type="range"
-              min="4"
-              max="124"
-              value="${device.channelStripSettings[stackIndex].sidechainF}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripCompSideChFreq",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-          <label>
-            G
-            <input
-              type="range"
-              min="0"
-              max="360"
-              value="${device.channelStripSettings[stackIndex].sidechainG}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripCompSideChGain",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-          <label>
-            Drive
-            <input
-              type="range"
-              min="0"
-              max="200"
-              value="${device.channelStripSettings[stackIndex].drive}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripCompDrive",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-        </div>
-        <div class="settings">
-          <h3>Equalizer</h3>
-          <h4>Low</h4>
-          <label>
-            Frequency
-            <input
-              type="range"
-              min="4"
-              max="72"
-              value="${device.channelStripSettings[stackIndex].lowFreq}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripEQLowFreq",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-          <label>
-            Gain
-            <input
-              type="range"
-              min="0"
-              max="360"
-              value="${device.channelStripSettings[stackIndex].lowGain}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripEQLowGain",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-        </div>
-        <div class="settings">
-          <h4>Mid</h4>
-          <label>
-            Q
-            <input
-              type="range"
-              min="0"
-              max="60"
-              value="${device.channelStripSettings[stackIndex].midQ}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripEQMidQ",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-          <label>
-            Frequency
-            <input
-              type="range"
-              min="4"
-              max="72"
-              value="${device.channelStripSettings[stackIndex].midFreq}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripEQMidFreq",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-          <label>
-            Gain
-            <input
-              type="range"
-              min="0"
-              max="360"
-              value="${device.channelStripSettings[stackIndex].midGain}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripEQMidGain",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-        </div>
-        <div class="settings">
-          <h4>High</h4>
-          <label>
-            Frequency
-            <input
-              type="range"
-              min="60"
-              max="124"
-              value="${device.channelStripSettings[stackIndex].highFreq}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripEQHighFreq",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-          <label>
-            Gain
-            <input
-              type="range"
-              min="0"
-              max="360"
-              value="${device.channelStripSettings[stackIndex].highGain}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripEQHighGain",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-        </div>
-        <div class="settings">
-          <label>
-            Total Gain
-            <input
-              type="range"
-              min="0"
-              max="360"
-              value="${device.channelStripSettings[stackIndex].totalGain}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripTotalGain",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-          <label>
-            Morphing
-            <input
-              type="range"
-              min="0"
-              max="200"
-              value="${deviceSettings["ChannelStripMorphing"]}"
-              @change=${(e) => {
-                const value = e.target.value;
-                device.updateParamValue(
-                  "ChannelStripMorphing",
-                  parseInt(value),
-                  stackIndex,
-                );
-              }}
-            >
-          </label>
-        </div>
+                host.status = `Loading ${data.name}…`;
+                host.render();
+                await device.loadSweetSpotData(stackIndex, data);
+                host.status = "";
+              } catch (err) {
+                console.error(err);
+                host.status = `Could not load ${file.name}: ${err.message}`;
+              }
+              host.render();
+            }}
+          >
+        </label>
+        <button @click=${() => {
+          const data = device.getSweetSpotData(stackIndex);
+          downloadBytes(
+            buildSweetSpotData(data), `${data.name || "Sweet Spot"}.ssd`,
+          );
+        }}>Save .ssd</button>
+        <label class="morph">
+          <span class="label">Morph</span>
+          <input
+            type="range"
+            min="0"
+            max=${MORPH_MAX}
+            .value=${live(morph)}
+            aria-valuetext=${(morph / 12).toFixed(2)}
+            @input=${(e) => {
+              device.updateParamValue(
+                "ChannelStripMorphing", parseInt(e.target.value), stackIndex,
+              );
+              host.render();
+            }}
+          >
+          <span class="value">${(morph / 12).toFixed(2)}</span>
+        </label>
+        ${slider("totalGain", "Total gain")}
+      </div>
+      <div class="cs-sections">
+        <section class="cs-compressor ${compOn ? "" : "bypassed"}">
+          <h3>Compressor ${toggle("compBypass", compOn, "Comp.")}</h3>
+          <div class="cs-graph">
+            <compressor-curve .params=${params} curve-only></compressor-curve>
+            <gr-meter data-meter="gr" title="Gain reduction"></gr-meter>
+          </div>
+          <div class="settings">
+            ${slider("drive", "Drive")}
+            ${slider("attack", "Attack")}
+            ${slider("release", "Release")}
+            ${slider("ratio", "Ratio")}
+            <label>
+              <span class="label">Knee</span>
+              <select
+                @change=${(e) => update("knee", parseInt(e.target.value))}
+              >
+                ${KNEE_NAMES.map((name, i) => html`<option
+                  value=${i}
+                  .selected=${params.knee === i}
+                >${name}</option>`)}
+              </select>
+            </label>
+            ${slider("sidechainF", "Side chain F")}
+            ${slider("sidechainG", "Side chain G")}
+            ${slider("sidechainQ", "Side chain Q")}
+          </div>
+        </section>
+        <section class="cs-eq ${eqOn ? "" : "bypassed"}">
+          <h3>Equalizer ${toggle("eqBypass", eqOn, "EQ")}</h3>
+          <eq-curve
+            .params=${params}
+            .sampleRate=${device.sampleRate}
+            @eq-change=${(e) => update(e.detail.param, e.detail.value)}
+          ></eq-curve>
+          <div class="settings">
+            ${slider("lowFreq", "Low F")}
+            ${slider("lowGain", "Low G")}
+            ${slider("midFreq", "Mid F")}
+            ${slider("midGain", "Mid G")}
+            ${slider("midQ", "Mid Q")}
+            ${slider("highFreq", "High F")}
+            ${slider("highGain", "High G")}
+          </div>
+        </section>
+        <section class="cs-output">
+          <h3>Output</h3>
+          <level-meter data-meter="out" title="Channel strip output">
+          </level-meter>
+        </section>
       </div>
     </div>
   `;
 };
-
 
 const getAmpTemplate = (channelTitle, ampTypeIndex, device) => {
   const deviceSettings = device.settings;
@@ -801,9 +693,9 @@ const getAmpTemplate = (channelTitle, ampTypeIndex, device) => {
 };
 
 
-const getFXTemplate = (device, channelIndex) => {
+const getFXTemplate = (device, channelIndex, host) => {
   const settings = device.settings;
-  const { type } = device.fxState[channelIndex];
+  const { type, stereo } = device.fxState[channelIndex];
   const channelTitle = UR44.INPUT_CHANNEL_TITLES[channelIndex];
 
   if (type === "off") {
@@ -815,7 +707,9 @@ const getFXTemplate = (device, channelIndex) => {
       device,
     );
   } else if (type === "channel-strip") {
-    return getChannelStripTemplate(channelIndex, device);
+    // a stereo strip is edited once, via its left channel
+    if (stereo && channelIndex % 2 === 1) return html``;
+    return getChannelStripTemplate(channelIndex, device, host);
   } else {
     throw new Error(
       "Unknown FX type: " + type,
@@ -823,13 +717,35 @@ const getFXTemplate = (device, channelIndex) => {
   }
 };
 
-customElements.define("channel-fx", class SteinMixer extends HTMLElement {
+customElements.define("channel-fx", class ChannelFX extends HTMLElement {
   constructor() {
     super();
   }
 
-  async connectedCallback() {
+  status = "";
+  #frame = null;
+
+  connectedCallback() {
     this.render();
+    this.#frame = requestAnimationFrame(() => this.#updateMeters());
+  }
+
+  disconnectedCallback() {
+    cancelAnimationFrame(this.#frame);
+  }
+
+  #updateMeters() {
+    for (const panel of this.querySelectorAll(".channel-strip-panel")) {
+      const meters = this.device.getChannelStripMeters(
+        parseInt(panel.dataset.stack),
+      );
+      if (!meters) continue;
+      const gr = panel.querySelector("[data-meter=gr]");
+      const out = panel.querySelector("[data-meter=out]");
+      if (gr) gr.value = meters.gainReduction;
+      if (out) out.value = meters.output;
+    }
+    this.#frame = requestAnimationFrame(() => this.#updateMeters());
   }
 
   render() {
@@ -837,14 +753,20 @@ customElements.define("channel-fx", class SteinMixer extends HTMLElement {
 
     let template;
 
-    if (fxState.every(({ type }) => type === "off")) {
+    if (!this.device.fxAvailable) {
+      template = html`<p class="fx-unavailable">
+        Channel strips and guitar amps are not available at
+        ${this.device.sampleRate / 1000} kHz. Use a sample rate of 96 kHz or
+        lower.
+      </p>`;
+    } else if (fxState.every(({ type }) => type === "off")) {
       template = html`No channel FX are enabled`;
     } else {
       template = html`${
-        [0,1,2,3,4,5].map(
-          channelIndex => getFXTemplate(this.device, channelIndex),
+        [0, 1, 2, 3, 4, 5].map(
+          (channelIndex) => getFXTemplate(this.device, channelIndex, this),
         )
-      }`;
+      }${this.status ? html`<p class="status">${this.status}</p>` : ""}`;
     }
 
     render(template, this);

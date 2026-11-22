@@ -8,7 +8,8 @@
     "lint": "npx eslint web --report-unused-disable-directives",
     "lint-fix": "npx eslint web --report-unused-disable-directives --fix",
     "start": "npx five-server web",
-    "test": "npx vitest run --dir web"
+    "test": "npx vitest run --dir web",
+    "test:hardware": "node hardware-test/run.mjs"
   },
   "author": "polyrainbow",
   "license": "Apache License 2.0",
