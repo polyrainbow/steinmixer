@@ -489,13 +489,16 @@
 
 @layer utilities {
   /* linked input pair shown as one stereo channel */
+  /*
+    Same size as the two mono strips it replaces: a mono strip is as wide as
+    its sliders plus 2 x 0.2em padding, and the strips have a 0.2em gap. So
+    two pan sliders side by side with a 0.6em gap result in the same width.
+  */
   channel-strip[type="stereo"] {
-    min-width: 9em;
-
     .pan-pair {
       display: flex;
-      flex-direction: column;
-      gap: 0.3em;
+      flex-direction: row;
+      gap: 0.6em;
     }
 
     fx-section .controls .phase-pair {
