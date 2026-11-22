@@ -107,6 +107,17 @@ the effect assignments and the morphing tables.
 lower 13 bits are the level, upper bits are flags (over, compressor active).
 Scale: `dB = (value − 8191) / 102.4` (80 dB range, 8191 = 0 dBFS).
 
+Measured with digital test signals on the DAW channels: sines at −60/−40/−20
+dBFS read 2026/4074/6122 (exactly 102.4 per dB), a 0 dBFS square wave reads
+8190, a 0 dBFS sine ≈ 8170 (sines read ~0.2 dB low). The analog inputs follow
+the same slope and set the over flag when the converter clips (checked on
+input 5/6). The DAW meters are pre-fader.
+
+Bit 15 (`0x8000`) of a level meter value is the device's **over** flag, set
+from about −0.13 dBFS sample peak on (a sine at that level reads ≈ 8158). On the
+gain reduction meters, bit 15 is also set when idle, so it means something else
+there.
+
 | values | meaning |
 |---|---|
 | 0–11 | analog inputs 1–6 |

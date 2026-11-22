@@ -15,8 +15,9 @@
                show an empty meter.
     min-db     attribute, bottom of the scale (default -80).
     The bar grows from the bottom upwards. A peak-hold line holds the
-    highest value for ~1 s. Values >= 0 dBFS light the OVER indicator,
-    which stays lit for 2 s after the last over (click it to reset).
+    highest value for ~1 s. Values >= 0 dBFS or setting `over` (the device's
+    clip detection, set it before `value`) light the OVER indicator, which
+    stays lit for 2 s after the last over (click it to reset).
     The host also gets the class "over" while lit.
 */
 
@@ -115,6 +116,7 @@ class LevelMeter extends HTMLElement {
   static observedAttributes = ["min-db"];
 
   #value = -Infinity;
+  over = false;
   #bar = null;
   #peak = null;
   #overLed = null;
@@ -217,7 +219,7 @@ class LevelMeter extends HTMLElement {
     }
     this.#lastUpdate = now;
 
-    if (db >= 0) {
+    if (db >= 0 || this.over) {
       this.#overUntil = now + OVER_HOLD_MS;
     }
     const over = now < this.#overUntil;

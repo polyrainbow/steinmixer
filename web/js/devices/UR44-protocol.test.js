@@ -18,6 +18,7 @@ import {
   encodeFxRemove,
   encodeParamChangeReapply,
   meterValueToDb,
+  isMeterOver,
 } from "./UR44-protocol.js";
 
 describe("8-to-7 packing", () => {
@@ -216,11 +217,29 @@ describe("other messages", () => {
     // analog 1 level 32 125 -> 4221
     msg.splice(7, 3, 0x00, 32, 125);
     const { values } = parseMessage(msg);
-    expect(values.analog1.momentary).toBe(4221);
+    expect(values.analog1).toEqual({ momentary: 4221, max: 0, over: false });
     expect(values.channelStripGainReduction[0].momentary).toBe(8191);
     expect(meterValueToDb(8191)).toBe(0);
     expect(meterValueToDb(4221)).toBeCloseTo(-38.77, 1);
     expect(meterValueToDb(0)).toBeCloseTo(-80, 1);
+  });
+
+  it("reads the over flag of the level meters", () => {
+    const msg = new Array(140).fill(0);
+    [0xF0, 0x43, 0x10, 0x3E, 0x14, 0x02, 0x02, 0x00].forEach((b, i) => {
+      msg[i] = b;
+    });
+    msg[139] = 0xF7;
+    // DAW L peak with a 0 dBFS sine, as sent by a UR44: 02 3F 6D (flag + 8173)
+    msg.splice(7 + 13 * 3, 3, 0x02, 0x3F, 0x6D);
+    // analog 1 level just below the over threshold
+    msg.splice(7, 3, 0x00, 63, 93);
+    const { values } = parseMessage(msg);
+    expect(values.dawL).toEqual({ momentary: 0, max: 8173, over: true });
+    expect(isMeterOver(values.dawL)).toBe(true);
+    expect(values.analog1.momentary).toBe(8157);
+    expect(isMeterOver(values.analog1)).toBe(false);
+    expect(isMeterOver({ momentary: 8158, max: 0, over: false })).toBe(true);
   });
 });
 

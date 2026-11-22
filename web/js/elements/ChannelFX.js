@@ -743,7 +743,10 @@ customElements.define("channel-fx", class ChannelFX extends HTMLElement {
       const gr = panel.querySelector("[data-meter=gr]");
       const out = panel.querySelector("[data-meter=out]");
       if (gr) gr.value = meters.gainReduction;
-      if (out) out.value = meters.output;
+      if (out) {
+        out.over = meters.outputOver;
+        out.value = meters.output;
+      }
     }
     this.#frame = requestAnimationFrame(() => this.#updateMeters());
   }

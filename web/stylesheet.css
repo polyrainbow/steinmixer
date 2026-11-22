@@ -162,17 +162,33 @@
         vu-meter {
           height: 8em;
           display: flex;
-          background: var(--black);
-          width: 1.2em;
-          align-items: self-end;
-          position: relative;
+          gap: 0.15em;
 
-          .momentary-overlay{
-            height: 0em;
-            background-color: var(--green);
+          .vu-track {
             position: relative;
+            width: 1.2em;
+            background: var(--black);
+            overflow: hidden;
+          }
+
+          .vu-tick {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background-color: rgb(128 128 128 / 0.6);
+          }
+
+          .momentary-overlay {
+            position: absolute;
             bottom: 0;
             width: 100%;
+            height: 0;
+            background-color: var(--green);
+          }
+
+          &.over .momentary-overlay {
+            background-color: var(--red);
           }
 
           .max-bar {
@@ -180,6 +196,20 @@
             height: 0.2em;
             width: 100%;
             position: absolute;
+          }
+
+          .vu-scale {
+            position: relative;
+            width: 1.1em;
+
+            span {
+              position: absolute;
+              right: 0;
+              font-size: 0.5rem;
+              line-height: 1;
+              color: var(--darkgrey);
+              transform: translateY(50%);
+            }
           }
         }
 

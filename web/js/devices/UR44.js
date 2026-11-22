@@ -10,6 +10,7 @@ import {
   parseMessage,
   readString,
   meterValueToDb,
+  isMeterOver,
   fxAvailableAtSampleRateCode,
   SAMPLE_RATES,
   STORE_COMMAND,
@@ -496,11 +497,18 @@ export default class UR44 {
     }
   }
 
-  getVuValues(channelId) {
-    if (!this.vuValues) {
-      throw new Error("Error getting vu values. No values received yet.");
-    }
-    return this.vuValues[channelId];
+  /*
+    Level of a meter channel (see METER_CHANNELS) in dBFS (-80..0), its peak
+    and whether it is clipping. null until the first meter message arrived.
+  */
+  getMeterLevels(channelId) {
+    const values = this.vuValues?.[channelId];
+    if (!values) return null;
+    return {
+      level: meterValueToDb(values.momentary),
+      peak: meterValueToDb(values.max),
+      over: isMeterOver(values),
+    };
   }
 
   /* gain reduction (<= 0 dB) and output level (dBFS) of a channel strip */
@@ -512,6 +520,7 @@ export default class UR44 {
       gainReduction: Math.min(0, meterValueToDb(gr.momentary)),
       output: meterValueToDb(out.momentary),
       outputPeak: meterValueToDb(out.max),
+      outputOver: isMeterOver(out),
     };
   }
 

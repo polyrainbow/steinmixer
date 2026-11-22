@@ -271,21 +271,47 @@ export const METER_CHANNELS = [
 
 /*
   44 values of 3 x 7 bit from byte 7 on, alternating level and peak. Only the
-  lower 13 bits are the value (8191 = 0 dBFS, see meterValueToDb), the upper
-  bits are flags (e.g. "over" or "compressor active").
+  lower 13 bits are the value, on a logarithmic scale with 102.4 steps per dB
+  and 8191 = 0 dBFS (see meterValueToDb). The upper bits are flags.
+
+  Measured on a UR44 with digital test signals on the DAW channels: sines at
+  -60/-40/-20 dBFS read 2026/4074/6122 (exactly 102.4 per dB), a 0 dBFS square
+  wave reads 8190, a 0 dBFS sine about 8170 (sines read ~0.2 dB low).
 */
 export const meterValueToDb = (value) => {
   return Math.max(-80, ((value & 0x1FFF) - 8191) / 102.4);
 };
 
+/*
+  On the level meters (inputs, DAW, master), bit 15 is the device's "over"
+  flag. It is set from about -0.13 dBFS sample peak on; a sine at that level
+  reads 8158. Bit 15 is also set on idle gain reduction meters, so it means
+  something else there.
+*/
+export const METER_OVER_FLAG = 0x8000;
+export const METER_OVER_VALUE = 8158;
+
+/* whether a level meter reading ({ momentary, max, over }) is clipping */
+export const isMeterOver = ({ momentary, max, over }) => {
+  return over || Math.max(momentary, max) >= METER_OVER_VALUE;
+};
+
 const parseMeters = (message) => {
   const read = (k) => {
     const offset = 7 + k * 3;
-    return (message[offset] * 16384
+    return message[offset] * 16384
       + message[offset + 1] * 128
-      + message[offset + 2]) & 0x1FFF;
+      + message[offset + 2];
   };
-  const pair = (k) => ({ momentary: read(k), max: read(k + 1) });
+  const pair = (k) => {
+    const level = read(k);
+    const peak = read(k + 1);
+    return {
+      momentary: level & 0x1FFF,
+      max: peak & 0x1FFF,
+      over: ((level | peak) & METER_OVER_FLAG) !== 0,
+    };
+  };
   const values = {};
   METER_CHANNELS.forEach((channelId, i) => {
     values[channelId] = pair(i * 2);

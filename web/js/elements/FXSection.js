@@ -167,9 +167,10 @@ customElements.define("fx-section", class extends HTMLElement {
     const isEnabled = (name) => parseInt(this.getAttribute(name)) === 1;
 
     const template = html`
-    ${meterIds.map((id) => html`<vu-meter
+    ${meterIds.map((id, i) => html`<vu-meter
       .device=${this.device}
       channel-id=${id}
+      ?show-scale=${i === 0}
     ></vu-meter>`)}
     ${isInput
       ? html`<div class="controls">

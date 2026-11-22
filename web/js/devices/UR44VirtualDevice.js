@@ -14,6 +14,8 @@ import {
   DUMP_TYPE_ALL,
   DUMP_TYPE_CURRENT_SCENE,
   DUMP_TYPE_MORPHING_TABLE,
+  METER_OVER_FLAG,
+  METER_OVER_VALUE,
 } from "./UR44-protocol.js";
 import { FX_BUDGET } from "./UR44-fx.js";
 
@@ -427,6 +429,10 @@ export default class UR44VirtualDevice {
         values[21 + s * 2] = values[20 + s * 2];
         values[28 + s * 2] = active ? level(6200, 5, s) : 0;
         values[29 + s * 2] = values[28 + s * 2] + 150;
+      }
+      // the level meters (inputs, DAW, master) flag overs like the device
+      for (let k = 0; k < 20; k++) {
+        if (values[k] >= METER_OVER_VALUE) values[k] |= METER_OVER_FLAG;
       }
       // values start at byte 7, 3 x 7 bit each
       const message = [0xF0, 0x43, 0x10, 0x3E, 0x14, 0x02, 0x02];
